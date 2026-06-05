@@ -1,12 +1,12 @@
 <template>
   <div class="dashboard">
-    <h2>仪表盘</h2>
+    <h2 class="page-title">仪表盘</h2>
     
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <el-col :span="6">
+    <el-row :gutter="16" class="stats-row">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <el-icon size="40" color="#409EFF"><Document /></el-icon>
+            <el-icon size="36" color="#409EFF" class="stat-icon"><Document /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.totalArchives }}</div>
               <div class="stat-label">案卷总数</div>
@@ -14,10 +14,10 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <el-icon size="40" color="#67C23A"><FolderOpened /></el-icon>
+            <el-icon size="36" color="#67C23A" class="stat-icon"><FolderOpened /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.totalCategories }}</div>
               <div class="stat-label">分类总数</div>
@@ -25,10 +25,10 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <el-icon size="40" color="#E6A23C"><CircleCheck /></el-icon>
+            <el-icon size="36" color="#E6A23C" class="stat-icon"><CircleCheck /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.approvedArchives }}</div>
               <div class="stat-label">已通过</div>
@@ -36,10 +36,10 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <el-icon size="40" color="#F56C6C"><Clock /></el-icon>
+            <el-icon size="36" color="#F56C6C" class="stat-icon"><Clock /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.pendingArchives }}</div>
               <div class="stat-label">待审核</div>
@@ -49,34 +49,38 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <el-col :span="12">
-        <el-card>
+    <el-row :gutter="16" class="tables-row">
+      <el-col :xs="24" :sm="24" :md="24" :lg="12">
+        <el-card class="table-card">
           <template #header>
-            <span>最近案卷</span>
+            <span class="card-title">最近案卷</span>
           </template>
-          <el-table :data="recentArchives" stripe>
-            <el-table-column prop="archive_number" label="案卷编号" />
-            <el-table-column prop="title" label="标题" />
-            <el-table-column prop="status_display" label="状态">
-              <template #default="scope">
-                <el-tag :type="getStatusType(scope.row.status)">
-                  {{ scope.row.status_display }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-container">
+            <el-table :data="recentArchives" stripe class="responsive-table">
+              <el-table-column prop="archive_number" label="案卷编号" min-width="100" />
+              <el-table-column prop="title" label="标题" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="status_display" label="状态" width="90">
+                <template #default="scope">
+                  <el-tag :type="getStatusType(scope.row.status)" size="small">
+                    {{ scope.row.status_display }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-card>
       </el-col>
-      <el-col :span="12">
-        <el-card>
+      <el-col :xs="24" :sm="24" :md="24" :lg="12">
+        <el-card class="table-card">
           <template #header>
-            <span>分类统计</span>
+            <span class="card-title">分类统计</span>
           </template>
-          <el-table :data="categoryStats" stripe>
-            <el-table-column prop="name" label="分类名称" />
-            <el-table-column prop="count" label="案卷数量" />
-          </el-table>
+          <div class="table-container">
+            <el-table :data="categoryStats" stripe class="responsive-table">
+              <el-table-column prop="name" label="分类名称" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="count" label="案卷数量" width="100" />
+            </el-table>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -145,13 +149,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard h2 {
+.page-title {
   margin-bottom: 20px;
   color: #303133;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.stats-row {
+  margin-bottom: 16px;
 }
 
 .stat-card {
-  height: 120px;
+  height: 110px;
+  margin-bottom: 16px;
 }
 
 .stat-content {
@@ -160,19 +171,92 @@ onMounted(() => {
   height: 100%;
 }
 
+.stat-icon {
+  flex-shrink: 0;
+}
+
 .stat-info {
-  margin-left: 20px;
+  margin-left: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
   color: #303133;
+  line-height: 1.2;
 }
 
 .stat-label {
   font-size: 14px;
   color: #909399;
-  margin-top: 5px;
+  margin-top: 6px;
+}
+
+.tables-row {
+  margin-top: 0;
+}
+
+.table-card {
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-weight: 600;
+  color: #303133;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.responsive-table {
+  min-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    height: 95px;
+  }
+
+  .stat-icon {
+    font-size: 32px !important;
+  }
+
+  .stat-info {
+    margin-left: 12px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-icon {
+    font-size: 28px !important;
+  }
+
+  .stat-info {
+    margin-left: 10px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
 }
 </style>

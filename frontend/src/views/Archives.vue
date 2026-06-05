@@ -1,81 +1,97 @@
 <template>
   <div class="archives">
     <div class="page-header">
-      <h2>案卷管理</h2>
-      <el-button type="primary" @click="handleAdd">
-        <el-icon><Plus /></el-icon>新增案卷
+      <h2 class="page-title">案卷管理</h2>
+      <el-button type="primary" @click="handleAdd" class="add-btn">
+        <el-icon><Plus /></el-icon>
+        <span class="btn-text">新增案卷</span>
       </el-button>
     </div>
 
-    <el-card style="margin-top: 20px;">
-      <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="关键词">
-          <el-input v-model="searchForm.search" placeholder="标题/编号/描述" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="searchForm.category" placeholder="请选择" clearable style="width: 150px;">
-            <el-option
-              v-for="cat in categories"
-              :key="cat.id"
-              :label="cat.name"
-              :value="cat.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px;">
-            <el-option label="草稿" value="draft" />
-            <el-option label="待审核" value="pending" />
-            <el-option label="已通过" value="approved" />
-            <el-option label="已驳回" value="rejected" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
+    <el-card class="main-card">
+      <el-form :model="searchForm" class="search-form">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="关键词" class="form-item">
+              <el-input v-model="searchForm.search" placeholder="标题/编号/描述" clearable class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="分类" class="form-item">
+              <el-select v-model="searchForm.category" placeholder="请选择" clearable class="full-width">
+                <el-option
+                  v-for="cat in categories"
+                  :key="cat.id"
+                  :label="cat.name"
+                  :value="cat.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="状态" class="form-item">
+              <el-select v-model="searchForm.status" placeholder="请选择" clearable class="full-width">
+                <el-option label="草稿" value="draft" />
+                <el-option label="待审核" value="pending" />
+                <el-option label="已通过" value="approved" />
+                <el-option label="已驳回" value="rejected" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="24" :lg="6">
+            <el-form-item class="form-item action-btns">
+              <el-button type="primary" @click="handleSearch" class="search-btn">搜索</el-button>
+              <el-button @click="handleReset" class="reset-btn">重置</el-button>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
 
-      <el-table :data="archives" stripe border style="margin-top: 20px;">
-        <el-table-column prop="archive_number" label="案卷编号" width="150" />
-        <el-table-column prop="title" label="标题" min-width="200" />
-        <el-table-column prop="category_name" label="分类" width="120" />
-        <el-table-column prop="status_display" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)" size="small">
-              {{ scope.row.status_display }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_by" label="创建人" width="100" />
-        <el-table-column prop="created_at" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDate(scope.row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <el-button type="primary" link @click="handleView(scope.row)">查看</el-button>
-            <el-button type="success" link @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table :data="archives" stripe border class="responsive-table">
+          <el-table-column prop="archive_number" label="案卷编号" min-width="110" />
+          <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="category_name" label="分类" min-width="90" />
+          <el-table-column prop="status_display" label="状态" width="90">
+            <template #default="scope">
+              <el-tag :type="getStatusType(scope.row.status)" size="small">
+                {{ scope.row.status_display }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_by" label="创建人" width="90" />
+          <el-table-column prop="created_at" label="创建时间" min-width="150">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" fixed="right" width="150">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button type="primary" link size="small" @click="handleView(scope.row)">查看</el-button>
+                <el-button type="success" link size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button type="danger" link size="small" @click="handleDelete(scope.row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        style="margin-top: 20px; text-align: right;"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
+      </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="dialogWidth" class="form-dialog">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="dialog-form">
         <el-form-item label="案卷编号" prop="archive_number">
           <el-input v-model="form.archive_number" :disabled="isView" />
         </el-form-item>
@@ -83,7 +99,7 @@
           <el-input v-model="form.title" :disabled="isView" />
         </el-form-item>
         <el-form-item label="所属分类" prop="category">
-          <el-select v-model="form.category" placeholder="请选择分类" :disabled="isView" style="width: 100%;">
+          <el-select v-model="form.category" placeholder="请选择分类" :disabled="isView" class="full-width">
             <el-option
               v-for="cat in categories"
               :key="cat.id"
@@ -93,7 +109,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" :disabled="isView" style="width: 100%;">
+          <el-select v-model="form.status" :disabled="isView" class="full-width">
             <el-option label="草稿" value="draft" />
             <el-option label="待审核" value="pending" />
             <el-option label="已通过" value="approved" />
@@ -119,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { archiveApi, categoryApi } from '@/api'
 
@@ -129,6 +145,16 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const isView = ref(false)
 const formRef = ref(null)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+const dialogWidth = computed(() => {
+  if (isMobile.value) return '95%'
+  return '700px'
+})
 
 const searchForm = reactive({
   search: '',
@@ -294,8 +320,14 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   loadCategories()
   loadArchives()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -304,14 +336,132 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.page-title {
   margin: 0;
   color: #303133;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.add-btn {
+  flex-shrink: 0;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.main-card {
+  margin-top: 0;
 }
 
 .search-form {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+.form-item {
+  margin-bottom: 12px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.action-btns {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.search-btn,
+.reset-btn {
+  margin-bottom: 18px;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.responsive-table {
+  min-width: 800px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dialog-form {
+  padding-right: 10px;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 18px;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
+  .search-form {
+    margin-bottom: 8px;
+  }
+
+  .form-item {
+    margin-bottom: 8px;
+  }
+
+  .search-btn,
+  .reset-btn {
+    margin-bottom: 18px;
+    flex: 1;
+  }
+
+  .action-btns {
+    width: 100%;
+  }
+
+  .pagination-wrapper {
+    justify-content: center;
+  }
+
+  .form-dialog :deep(.el-dialog__body) {
+    padding: 16px;
+  }
+
+  .dialog-form :deep(.el-form-item__label) {
+    width: 70px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-text {
+    display: inline;
+  }
 }
 </style>

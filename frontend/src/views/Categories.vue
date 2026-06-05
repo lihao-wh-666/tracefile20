@@ -1,42 +1,47 @@
 <template>
   <div class="categories">
     <div class="page-header">
-      <h2>分类管理</h2>
-      <el-button type="primary" @click="handleAdd">
-        <el-icon><Plus /></el-icon>新增分类
+      <h2 class="page-title">分类管理</h2>
+      <el-button type="primary" @click="handleAdd" class="add-btn">
+        <el-icon><Plus /></el-icon>
+        <span class="btn-text">新增分类</span>
       </el-button>
     </div>
 
-    <el-card style="margin-top: 20px;">
-      <el-table :data="categories" stripe border>
-        <el-table-column prop="name" label="分类名称" />
-        <el-table-column prop="parent_name" label="父分类">
-          <template #default="scope">
-            {{ scope.row.parent_name || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="created_at" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatDate(scope.row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150">
-          <template #default="scope">
-            <el-button type="primary" link @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <el-card class="main-card">
+      <div class="table-container">
+        <el-table :data="categories" stripe border class="responsive-table">
+          <el-table-column prop="name" label="分类名称" min-width="120" />
+          <el-table-column prop="parent_name" label="父分类" min-width="100">
+            <template #default="scope">
+              {{ scope.row.parent_name || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="created_at" label="创建时间" min-width="150">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" fixed="right" width="130">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button type="primary" link size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button type="danger" link size="small" @click="handleDelete(scope.row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑分类' : '新增分类'" width="500px">
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑分类' : '新增分类'" :width="dialogWidth" class="form-dialog">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px" class="dialog-form">
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入分类名称" />
         </el-form-item>
         <el-form-item label="父分类" prop="parent">
-          <el-select v-model="form.parent" placeholder="请选择父分类" clearable>
+          <el-select v-model="form.parent" placeholder="请选择父分类" clearable class="full-width">
             <el-option
               v-for="cat in parentCategories"
               :key="cat.id"
@@ -58,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { categoryApi } from '@/api'
 
@@ -67,6 +72,16 @@ const parentCategories = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+const dialogWidth = computed(() => {
+  if (isMobile.value) return '95%'
+  return '500px'
+})
 
 const form = reactive({
   id: null,
@@ -149,7 +164,13 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   loadCategories()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -158,10 +179,75 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.page-title {
   margin: 0;
   color: #303133;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.add-btn {
+  flex-shrink: 0;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.main-card {
+  margin-top: 0;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.responsive-table {
+  min-width: 600px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 18px;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
+  .form-dialog :deep(.el-dialog__body) {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-text {
+    display: inline;
+  }
 }
 </style>
