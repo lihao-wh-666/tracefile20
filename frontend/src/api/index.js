@@ -31,4 +31,15 @@ export const archiveApi = {
   delete: (id) => api.delete(`/archives/${id}/`)
 }
 
+export const todoApi = {
+  getAll: (params) => api.get('/todos/', { params }),
+  getById: (id) => api.get(`/todos/${id}/`),
+  create: (data) => api.post('/todos/', data),
+  update: (id, data) => api.put(`/todos/${id}/`, data),
+  delete: (id) => api.delete(`/todos/${id}/`),
+  getUnreadCount: () => api.get('/todos/unread_count/'),
+  markAllRead: () => api.post('/todos/mark_all_read/'),
+  toggleStatus: (id) => api.post(`/todos/${id}/toggle_status/`)
+}
+
 export default api

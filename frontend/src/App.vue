@@ -12,6 +12,16 @@
           <el-icon size="24" class="header-icon"><Document /></el-icon>
           <span>案卷管理系统</span>
         </h1>
+        <div class="header-right">
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
+            <el-button 
+              class="notification-btn" 
+              :icon="Bell" 
+              circle 
+              @click="notificationVisible = true"
+            />
+          </el-badge>
+        </div>
       </div>
     </el-header>
     <el-container>
@@ -36,12 +46,75 @@
             <el-icon><Files /></el-icon>
             <span>案卷管理</span>
           </el-menu-item>
+          <el-menu-item index="/todos">
+            <el-icon><List /></el-icon>
+            <span>待办事项</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-main class="main">
         <router-view />
       </el-main>
     </el-container>
+
+    <el-drawer
+      v-model="notificationVisible"
+      title="待办消息提醒"
+      direction="rtl"
+      size="400px"
+      class="notification-drawer"
+    >
+      <div class="notification-header">
+        <span>共 {{ notificationList.length }} 条待办</span>
+        <el-button 
+          type="primary" 
+          link 
+          size="small" 
+          @click="handleMarkAllRead"
+          :disabled="unreadCount === 0"
+        >
+          全部标为已读
+        </el-button>
+      </div>
+      <div class="notification-list">
+        <div 
+          v-for="item in notificationList" 
+          :key="item.id" 
+          class="notification-item"
+          :class="{ 'is-read': item.is_read, 'is-completed': item.status === 'completed' }"
+        >
+          <div class="item-header">
+            <el-tag 
+              :type="getPriorityType(item.priority)" 
+              size="small"
+              class="priority-tag"
+            >
+              {{ item.priority_display }}
+            </el-tag>
+            <span class="item-time">{{ formatDate(item.created_at) }}</span>
+          </div>
+          <div class="item-title" @click="handleViewTodo(item)">{{ item.title }}</div>
+          <div v-if="item.description" class="item-desc">{{ item.description }}</div>
+          <div class="item-actions">
+            <el-checkbox 
+              :model-value="item.status === 'completed'" 
+              @change="handleToggleStatus(item)"
+            >
+              已完成
+            </el-checkbox>
+            <el-button type="primary" link size="small" @click="handleMarkRead(item)" v-if="!item.is_read">
+              标为已读
+            </el-button>
+          </div>
+        </div>
+        <el-empty v-if="notificationList.length === 0" description="暂无待办消息" />
+      </div>
+      <div class="notification-footer">
+        <el-button type="primary" @click="goToTodoList" style="width: 100%">
+          查看全部待办
+        </el-button>
+      </div>
+    </el-drawer>
 
     <el-drawer
       v-model="drawerVisible"
@@ -70,6 +143,10 @@
           <el-icon><Files /></el-icon>
           <span>案卷管理</span>
         </el-menu-item>
+        <el-menu-item index="/todos">
+          <el-icon><List /></el-icon>
+          <span>待办事项</span>
+        </el-menu-item>
       </el-menu>
     </el-drawer>
   </el-container>
@@ -77,25 +154,110 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { Menu } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Menu, Bell, List } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { todoApi } from '@/api'
 
 const route = useRoute()
+const router = useRouter()
 const activeMenu = computed(() => route.path)
 const drawerVisible = ref(false)
+const notificationVisible = ref(false)
 const isMobile = ref(false)
+const unreadCount = ref(0)
+const notificationList = ref([])
+let refreshInterval = null
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
 }
 
+const getPriorityType = (priority) => {
+  const map = { high: 'danger', medium: 'warning', low: 'info' }
+  return map[priority] || 'info'
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now - date
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+const loadUnreadCount = async () => {
+  try {
+    const res = await todoApi.getUnreadCount()
+    unreadCount.value = res.data.count
+  } catch (error) {
+    console.error('加载未读数量失败:', error)
+  }
+}
+
+const loadNotificationList = async () => {
+  try {
+    const res = await todoApi.getAll({ page_size: 10, ordering: '-created_at' })
+    notificationList.value = res.data.results || res.data
+  } catch (error) {
+    console.error('加载待办列表失败:', error)
+  }
+}
+
+const handleMarkAllRead = async () => {
+  try {
+    await todoApi.markAllRead()
+    notificationList.value.forEach(item => item.is_read = true)
+    unreadCount.value = 0
+    ElMessage.success('已全部标记为已读')
+  } catch (error) {
+    console.error('标记全部已读失败:', error)
+  }
+}
+
+const handleMarkRead = async (item) => {
+  try {
+    await todoApi.update(item.id, { ...item, is_read: true })
+    item.is_read = true
+    if (unreadCount.value > 0) unreadCount.value--
+  } catch (error) {
+    console.error('标记已读失败:', error)
+  }
+}
+
+const handleToggleStatus = async (item) => {
+  try {
+    const res = await todoApi.toggleStatus(item.id)
+    Object.assign(item, res.data)
+    ElMessage.success(item.status === 'completed' ? '已标记为完成' : '已标记为待处理')
+  } catch (error) {
+    console.error('切换状态失败:', error)
+  }
+}
+
+const handleViewTodo = (item) => {
+  if (!item.is_read) handleMarkRead(item)
+}
+
+const goToTodoList = () => {
+  notificationVisible.value = false
+  router.push('/todos')
+}
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  loadUnreadCount()
+  loadNotificationList()
+  refreshInterval = setInterval(loadUnreadCount, 60000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  if (refreshInterval) clearInterval(refreshInterval)
 })
 </script>
 
@@ -126,7 +288,114 @@ html, body, #app {
 .header-content {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.notification-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+}
+
+.notification-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.notification-badge :deep(.el-badge__content) {
+  background-color: #f56c6c;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 12px;
+}
+
+.notification-list {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background-color: #f5f7fa;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.notification-item:hover {
+  background-color: #ecf5ff;
+}
+
+.notification-item.is-read {
+  opacity: 0.7;
+}
+
+.notification-item.is-completed {
+  opacity: 0.5;
+}
+
+.notification-item.is-completed .item-title {
+  text-decoration: line-through;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.priority-tag {
+  margin-right: 8px;
+}
+
+.item-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.item-desc {
+  font-size: 13px;
+  color: #606266;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.item-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-footer {
+  padding-top: 16px;
+  border-top: 1px solid #ebeef5;
+  margin-top: 16px;
 }
 
 .menu-toggle {

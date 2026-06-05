@@ -1,5 +1,19 @@
 from rest_framework import serializers
-from .models import Category, Archive
+from .models import Category, Archive, Todo
+
+
+class TodoSerializer(serializers.ModelSerializer):
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Todo
+        fields = [
+            'id', 'title', 'description', 'priority', 'priority_display',
+            'status', 'status_display', 'due_date', 'is_read',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class CategorySerializer(serializers.ModelSerializer):

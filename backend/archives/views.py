@@ -2,8 +2,34 @@ from rest_framework import viewsets, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Category, Archive
-from .serializers import CategorySerializer, CategorySimpleSerializer, ArchiveSerializer
+from .models import Category, Archive, Todo
+from .serializers import CategorySerializer, CategorySimpleSerializer, ArchiveSerializer, TodoSerializer
+
+
+class TodoViewSet(viewsets.ModelViewSet):
+    queryset = Todo.objects.all()
+    serializer_class = TodoSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['priority', 'status', 'is_read']
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at', 'due_date', 'priority']
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        count = Todo.objects.filter(is_read=False, status='pending').count()
+        return Response({'count': count})
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        Todo.objects.filter(is_read=False).update(is_read=True)
+        return Response({'message': '已全部标记为已读'})
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        todo = self.get_object()
+        todo.status = 'completed' if todo.status == 'pending' else 'pending'
+        todo.save()
+        return Response(TodoSerializer(todo).data)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
