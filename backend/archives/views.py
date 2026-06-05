@@ -1,9 +1,86 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth import authenticate, login, logout
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Category, Archive, Todo
+from .models import Category, Archive, Todo, LoginAttempt
 from .serializers import CategorySerializer, CategorySimpleSerializer, ArchiveSerializer, TodoSerializer
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response(
+            {'detail': '用户名和密码不能为空'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    is_locked, lock_until = LoginAttempt.is_locked(username)
+    if is_locked:
+        remaining_minutes = int((lock_until - timezone.now()).total_seconds() / 60) + 1
+        return Response(
+            {
+                'detail': f'登录失败次数过多，账号已被锁定，请在 {remaining_minutes} 分钟后再试',
+                'lock_until': lock_until
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    user = authenticate(request, username=username, password=password)
+
+    if user is not None:
+        LoginAttempt.reset_attempts(username)
+        login(request, user)
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'is_staff': user.is_staff
+        })
+    else:
+        attempt = LoginAttempt.record_failed_attempt(username)
+        remaining_attempts = LoginAttempt.MAX_ATTEMPTS - attempt.failed_attempts
+        if remaining_attempts > 0:
+            return Response(
+                {
+                    'detail': f'用户名或密码错误，还有 {remaining_attempts} 次尝试机会',
+                    'remaining_attempts': remaining_attempts
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        else:
+            return Response(
+                {
+                    'detail': f'登录失败次数过多，账号已被锁定 {LoginAttempt.LOCK_DURATION_MINUTES} 分钟',
+                    'lock_until': attempt.lock_until
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    logout(request)
+    return Response({'detail': '已成功登出'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_info_view(request):
+    user = request.user
+    return Response({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'is_staff': user.is_staff
+    })
 
 
 class TodoViewSet(viewsets.ModelViewSet):

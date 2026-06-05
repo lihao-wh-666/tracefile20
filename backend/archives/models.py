@@ -1,4 +1,52 @@
 from django.db import models
+from django.utils import timezone
+
+
+class LoginAttempt(models.Model):
+    username = models.CharField(max_length=150, unique=True, verbose_name='用户名')
+    failed_attempts = models.IntegerField(default=0, verbose_name='失败次数')
+    last_attempt_time = models.DateTimeField(null=True, blank=True, verbose_name='最后尝试时间')
+    lock_until = models.DateTimeField(null=True, blank=True, verbose_name='锁定截止时间')
+
+    class Meta:
+        verbose_name = '登录尝试记录'
+        verbose_name_plural = '登录尝试记录'
+
+    def __str__(self):
+        return self.username
+
+    MAX_ATTEMPTS = 5
+    LOCK_DURATION_MINUTES = 60
+
+    @classmethod
+    def is_locked(cls, username):
+        try:
+            attempt = cls.objects.get(username=username)
+            if attempt.lock_until and attempt.lock_until > timezone.now():
+                return True, attempt.lock_until
+            return False, None
+        except cls.DoesNotExist:
+            return False, None
+
+    @classmethod
+    def record_failed_attempt(cls, username):
+        attempt, created = cls.objects.get_or_create(username=username)
+        attempt.failed_attempts += 1
+        attempt.last_attempt_time = timezone.now()
+        if attempt.failed_attempts >= cls.MAX_ATTEMPTS:
+            attempt.lock_until = timezone.now() + timezone.timedelta(minutes=cls.LOCK_DURATION_MINUTES)
+        attempt.save()
+        return attempt
+
+    @classmethod
+    def reset_attempts(cls, username):
+        try:
+            attempt = cls.objects.get(username=username)
+            attempt.failed_attempts = 0
+            attempt.lock_until = None
+            attempt.save()
+        except cls.DoesNotExist:
+            pass
 
 
 class Todo(models.Model):
