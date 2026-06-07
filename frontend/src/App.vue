@@ -1,5 +1,8 @@
 <template>
-  <el-container class="layout-container">
+  <div v-if="isLoginPage" class="login-wrapper">
+    <router-view />
+  </div>
+  <el-container v-else class="layout-container">
     <el-header class="header">
       <div class="header-content">
         <el-button 
@@ -21,6 +24,27 @@
               @click="notificationVisible = true"
             />
           </el-badge>
+          <el-dropdown @command="handleUserCommand" class="user-dropdown">
+            <span class="user-info">
+              <el-icon class="user-icon"><UserFilled /></el-icon>
+              <span class="username">{{ userInfo?.username || '用户' }}</span>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item disabled>
+                  <span>用户名：{{ userInfo?.username }}</span>
+                </el-dropdown-item>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  个人中心
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" divided>
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
     </el-header>
@@ -49,6 +73,10 @@
           <el-menu-item index="/todos">
             <el-icon><List /></el-icon>
             <span>待办事项</span>
+          </el-menu-item>
+          <el-menu-item index="/profile">
+            <el-icon><User /></el-icon>
+            <span>个人中心</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -147,6 +175,10 @@
           <el-icon><List /></el-icon>
           <span>待办事项</span>
         </el-menu-item>
+        <el-menu-item index="/profile">
+          <el-icon><User /></el-icon>
+          <span>个人中心</span>
+        </el-menu-item>
       </el-menu>
     </el-drawer>
   </el-container>
@@ -155,19 +187,57 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Menu, Bell, List } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { todoApi } from '@/api'
+import { Menu, Bell, List, UserFilled, SwitchButton, User } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { todoApi, authApi } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const activeMenu = computed(() => route.path)
+const isLoginPage = computed(() => route.path === '/login')
 const drawerVisible = ref(false)
 const notificationVisible = ref(false)
 const isMobile = ref(false)
 const unreadCount = ref(0)
 const notificationList = ref([])
+const userInfo = ref(null)
 let refreshInterval = null
+
+const loadUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      userInfo.value = JSON.parse(userStr)
+    } catch (e) {
+      userInfo.value = null
+    }
+  }
+}
+
+const handleUserCommand = async (command) => {
+  if (command === 'profile') {
+    router.push('/profile')
+  } else if (command === 'logout') {
+    try {
+      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+      try {
+        await authApi.logout()
+      } catch (e) {
+        // 忽略登出 API 错误
+      }
+      localStorage.removeItem('user')
+      userInfo.value = null
+      ElMessage.success('已退出登录')
+      router.push('/login')
+    } catch (e) {
+      // 用户取消
+    }
+  }
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -248,6 +318,7 @@ const goToTodoList = () => {
 }
 
 onMounted(() => {
+  loadUserInfo()
   checkMobile()
   window.addEventListener('resize', checkMobile)
   loadUnreadCount()
@@ -269,6 +340,10 @@ onUnmounted(() => {
 }
 
 html, body, #app {
+  height: 100%;
+}
+
+.login-wrapper {
   height: 100%;
 }
 
@@ -310,6 +385,33 @@ html, body, #app {
 
 .notification-badge :deep(.el-badge__content) {
   background-color: #f56c6c;
+}
+
+.user-dropdown {
+  margin-left: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  color: white;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.user-info:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.user-icon {
+  margin-right: 6px;
+  font-size: 18px;
+}
+
+.username {
+  font-size: 14px;
 }
 
 .notification-header {

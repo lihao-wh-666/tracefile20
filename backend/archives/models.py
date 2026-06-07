@@ -1,5 +1,62 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.utils import timezone
+
+
+class UserProfile(models.Model):
+    GENDER_CHOICES = [
+        ('male', '男'),
+        ('female', '女'),
+        ('other', '其他'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile', verbose_name='用户')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='手机号')
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, verbose_name='性别')
+    avatar = models.ImageField(upload_to='avatars/', blank=True, verbose_name='头像')
+    bio = models.TextField(blank=True, verbose_name='个人简介')
+    department = models.CharField(max_length=100, blank=True, verbose_name='部门')
+    position = models.CharField(max_length=100, blank=True, verbose_name='职位')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        verbose_name = '用户资料'
+        verbose_name_plural = '用户资料'
+
+    def __str__(self):
+        return self.user.username
+
+
+class UserPreference(models.Model):
+    THEME_CHOICES = [
+        ('light', '浅色主题'),
+        ('dark', '深色主题'),
+        ('auto', '跟随系统'),
+    ]
+
+    LANGUAGE_CHOICES = [
+        ('zh-CN', '简体中文'),
+        ('en', 'English'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences', verbose_name='用户')
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='light', verbose_name='主题')
+    language = models.CharField(max_length=20, choices=LANGUAGE_CHOICES, default='zh-CN', verbose_name='语言')
+    email_notification = models.BooleanField(default=True, verbose_name='邮件通知')
+    sound_effect = models.BooleanField(default=False, verbose_name='音效')
+    auto_save = models.BooleanField(default=True, verbose_name='自动保存')
+    page_size = models.IntegerField(default=10, verbose_name='每页条数')
+    sidebar_collapsed = models.BooleanField(default=False, verbose_name='侧边栏收起')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        verbose_name = '用户偏好'
+        verbose_name_plural = '用户偏好'
+
+    def __str__(self):
+        return f"{self.user.username}的偏好设置"
 
 
 class LoginAttempt(models.Model):

@@ -3,10 +3,25 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate, login, logout
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Category, Archive, Todo, LoginAttempt
-from .serializers import CategorySerializer, CategorySimpleSerializer, ArchiveSerializer, TodoSerializer
+from .models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference
+from .serializers import (
+    CategorySerializer, CategorySimpleSerializer, ArchiveSerializer, TodoSerializer,
+    UserInfoSerializer, UserUpdateSerializer, PasswordChangeSerializer,
+    UserProfileSerializer, UserPreferenceSerializer
+)
+from django.utils.decorators import method_decorator
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@ensure_csrf_cookie
+def csrf_token_view(request):
+    csrf_token = get_token(request)
+    return Response({'csrfToken': csrf_token})
 
 
 @api_view(['POST'])
@@ -75,12 +90,69 @@ def logout_view(request):
 @permission_classes([IsAuthenticated])
 def user_info_view(request):
     user = request.user
-    return Response({
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'is_staff': user.is_staff
-    })
+    UserProfile.objects.get_or_create(user=user)
+    UserPreference.objects.get_or_create(user=user)
+    serializer = UserInfoSerializer(user)
+    return Response(serializer.data)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_user_info(request):
+    user = request.user
+    serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        user = request.user
+        UserProfile.objects.get_or_create(user=user)
+        UserPreference.objects.get_or_create(user=user)
+        result_serializer = UserInfoSerializer(user)
+        return Response(result_serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'detail': '密码修改成功'})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def user_preferences_view(request):
+    user = request.user
+    preferences, created = UserPreference.objects.get_or_create(user=user)
+
+    if request.method == 'GET':
+        serializer = UserPreferenceSerializer(preferences)
+        return Response(serializer.data)
+
+    serializer = UserPreferenceSerializer(preferences, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def user_profile_view(request):
+    user = request.user
+    profile, created = UserProfile.objects.get_or_create(user=user)
+
+    if request.method == 'GET':
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data)
+
+    serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TodoViewSet(viewsets.ModelViewSet):
