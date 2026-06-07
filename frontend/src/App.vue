@@ -16,6 +16,13 @@
           <span>案卷管理系统</span>
         </h1>
         <div class="header-right">
+          <el-button 
+            class="theme-toggle-btn" 
+            :icon="isDark ? Sunny : Moon" 
+            circle 
+            @click="toggleTheme"
+            :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
+          />
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
             <el-button 
               class="notification-btn" 
@@ -187,9 +194,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Menu, Bell, List, UserFilled, SwitchButton, User } from '@element-plus/icons-vue'
+import { Menu, Bell, List, UserFilled, SwitchButton, User, Sunny, Moon } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { todoApi, authApi } from '@/api'
+import { useTheme } from '@/composables/useTheme'
+
+const { isDark, toggleTheme } = useTheme()
 
 const route = useRoute()
 const router = useRouter()
@@ -343,6 +353,12 @@ html, body, #app {
   height: 100%;
 }
 
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 .login-wrapper {
   height: 100%;
 }
@@ -352,12 +368,13 @@ html, body, #app {
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--gradient-primary);
+  color: var(--header-text);
   display: flex;
   align-items: center;
   padding: 0 20px;
   height: 60px !important;
+  transition: background 0.3s ease;
 }
 
 .header-content {
@@ -372,19 +389,28 @@ html, body, #app {
   align-items: center;
 }
 
-.notification-btn {
-  background: rgba(255, 255, 255, 0.2);
+.theme-toggle-btn,
+.notification-btn,
+.menu-toggle {
+  background: var(--header-btn-bg);
   border: none;
-  color: white;
+  color: var(--header-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.notification-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
+.theme-toggle-btn:hover,
+.notification-btn:hover,
+.menu-toggle:hover {
+  background: var(--header-btn-hover-bg);
+  color: var(--header-text);
+}
+
+.theme-toggle-btn {
+  margin-right: 8px;
 }
 
 .notification-badge :deep(.el-badge__content) {
-  background-color: #f56c6c;
+  background-color: var(--danger-color);
 }
 
 .user-dropdown {
@@ -394,7 +420,7 @@ html, body, #app {
 .user-info {
   display: flex;
   align-items: center;
-  color: white;
+  color: var(--header-text);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -402,7 +428,7 @@ html, body, #app {
 }
 
 .user-info:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--header-btn-bg);
 }
 
 .user-icon {
@@ -419,7 +445,7 @@ html, body, #app {
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-tertiary);
   margin-bottom: 12px;
 }
 
@@ -432,13 +458,13 @@ html, body, #app {
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 8px;
-  background-color: #f5f7fa;
+  background-color: var(--bg-tertiary);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .notification-item:hover {
-  background-color: #ecf5ff;
+  background-color: var(--bg-hover);
 }
 
 .notification-item.is-read {
@@ -466,20 +492,20 @@ html, body, #app {
 
 .item-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .item-title {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--text-primary);
   margin-bottom: 6px;
   line-height: 1.4;
 }
 
 .item-desc {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   line-height: 1.4;
   display: -webkit-box;
@@ -496,21 +522,13 @@ html, body, #app {
 
 .notification-footer {
   padding-top: 16px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-tertiary);
   margin-top: 16px;
 }
 
 .menu-toggle {
   display: none;
   margin-right: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-}
-
-.menu-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
 }
 
 .header-title {
@@ -526,20 +544,30 @@ html, body, #app {
 }
 
 .aside {
-  background-color: #545c64;
+  background-color: var(--sidebar-bg);
   height: calc(100vh - 60px);
   overflow-y: auto;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s ease;
 }
 
 .sidebar-menu {
   border-right: none;
+  --el-menu-bg-color: var(--sidebar-bg);
+  --el-menu-text-color: var(--sidebar-text);
+  --el-menu-active-color: var(--sidebar-active-text);
+  --el-menu-hover-bg-color: var(--sidebar-hover-bg);
+}
+
+.sidebar-menu .el-menu-item,
+.drawer-menu .el-menu-item {
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .main {
-  background-color: #f5f7fa;
+  background-color: var(--bg-primary);
   padding: 20px;
   overflow-x: hidden;
+  transition: background-color 0.3s ease;
 }
 
 .mobile-drawer :deep(.el-drawer__header) {
@@ -548,12 +576,16 @@ html, body, #app {
 
 .mobile-drawer :deep(.el-drawer__body) {
   padding: 0;
-  background-color: #545c64;
+  background-color: var(--sidebar-bg);
 }
 
 .drawer-menu {
   border-right: none;
   height: 100%;
+  --el-menu-bg-color: var(--sidebar-bg);
+  --el-menu-text-color: var(--sidebar-text);
+  --el-menu-active-color: var(--sidebar-active-text);
+  --el-menu-hover-bg-color: var(--sidebar-hover-bg);
 }
 
 @media (max-width: 768px) {

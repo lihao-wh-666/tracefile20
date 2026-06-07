@@ -1,0 +1,100 @@
+:root {
+  --theme-transition: all 0.3s ease;
+}
+
+html.theme-light {
+  --bg-primary: #f5f7fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-hover: #ecf5ff;
+
+  --text-primary: #303133;
+  --text-secondary: #606266;
+  --text-tertiary: #909399;
+  --text-placeholder: #c0c4cc;
+  --text-inverse: #ffffff;
+
+  --border-primary: #dcdfe6;
+  --border-secondary: #e4e7ed;
+  --border-tertiary: #ebeef5;
+
+  --primary-color: #409eff;
+  --primary-light: #ecf5ff;
+  --primary-dark: #337ecc;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+
+  --header-bg-start: #667eea;
+  --header-bg-end: #764ba2;
+  --header-text: #ffffff;
+  --header-btn-bg: rgba(255, 255, 255, 0.2);
+  --header-btn-hover-bg: rgba(255, 255, 255, 0.3);
+
+  --sidebar-bg: #545c64;
+  --sidebar-text: #ffffff;
+  --sidebar-active-text: #ffd04b;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+html.theme-dark {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #252525;
+  --bg-card: #1e1e1e;
+  --bg-hover: #2d2d2d;
+
+  --text-primary: #e5eaf3;
+  --text-secondary: #a3a6ad;
+  --text-tertiary: #6b7280;
+  --text-placeholder: #4b5563;
+  --text-inverse: #1a1a1a;
+
+  --border-primary: #3a3a3c;
+  --border-secondary: #2c2c2e;
+  --border-tertiary: #232325;
+
+  --primary-color: #409eff;
+  --primary-light: #1c2b3a;
+  --primary-dark: #66b1ff;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+
+  --header-bg-start: #1a1a2e;
+  --header-bg-end: #16213e;
+  --header-text: #e5eaf3;
+  --header-btn-bg: rgba(255, 255, 255, 0.1);
+  --header-btn-hover-bg: rgba(255, 255, 255, 0.18);
+
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #a3a6ad;
+  --sidebar-active-text: #409eff;
+  --sidebar-hover-bg: rgba(64, 158, 255, 0.1);
+
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --gradient-secondary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease, stroke 0.3s ease !important;
+}

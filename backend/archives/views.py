@@ -2,10 +2,12 @@ from rest_framework import viewsets, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference
 from .serializers import (
@@ -116,7 +118,8 @@ def update_user_info(request):
 def change_password(request):
     serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
-        serializer.save()
+        user = serializer.save()
+        update_session_auth_hash(request, user)
         return Response({'detail': '密码修改成功'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

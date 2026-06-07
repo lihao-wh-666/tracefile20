@@ -168,22 +168,159 @@
             label-width="120px"
             class="preferences-form"
           >
-            <el-form-item label="主题设置">
-              <el-radio-group v-model="preferencesForm.theme">
-                <el-radio value="light">
-                  <el-icon><Sunny /></el-icon>
-                  浅色主题
-                </el-radio>
-                <el-radio value="dark">
-                  <el-icon><Moon /></el-icon>
-                  深色主题
-                </el-radio>
-                <el-radio value="auto">
-                  <el-icon><Monitor /></el-icon>
-                  跟随系统
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
+            <el-divider content-position="left">
+              <span class="divider-title">
+                <el-icon><Brush /></el-icon>
+                主题设置
+              </span>
+            </el-divider>
+
+            <div class="theme-section">
+              <div class="section-label">选择主题模式</div>
+              <div class="theme-mode-cards">
+                <div
+                  v-for="mode in themeModes"
+                  :key="mode.value"
+                  class="theme-mode-card"
+                  :class="{ active: themeMode === mode.value }"
+                  @click="selectThemeMode(mode.value)"
+                >
+                  <div class="mode-icon">
+                    <el-icon :size="28"><component :is="mode.icon" /></el-icon>
+                  </div>
+                  <div class="mode-info">
+                    <div class="mode-name">{{ mode.label }}</div>
+                    <div class="mode-desc">{{ mode.desc }}</div>
+                  </div>
+                  <div class="mode-check" v-if="themeMode === mode.value">
+                    <el-icon :size="20" color="#409eff"><CircleCheckFilled /></el-icon>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="theme-section">
+              <div class="section-label">主题预览</div>
+              <div class="theme-preview-container">
+                <div class="preview-device">
+                  <div class="preview-header">
+                    <div class="preview-dots">
+                      <span class="dot dot-red"></span>
+                      <span class="dot dot-yellow"></span>
+                      <span class="dot dot-green"></span>
+                    </div>
+                    <div class="preview-title">预览效果</div>
+                  </div>
+                  <div class="preview-body" :class="'preview-' + effectiveTheme">
+                    <div class="preview-top-bar"></div>
+                    <div class="preview-layout">
+                      <div class="preview-sidebar"></div>
+                      <div class="preview-content">
+                        <div class="preview-card card-1"></div>
+                        <div class="preview-card card-2"></div>
+                        <div class="preview-card card-3"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="theme-section">
+              <div class="section-header">
+                <div class="section-label">自定义主题色</div>
+                <el-switch
+                  v-model="customThemeEnabled"
+                  size="small"
+                  active-text="开启"
+                  inactive-text="关闭"
+                />
+              </div>
+              <div class="custom-theme-editor" v-show="customThemeEnabled">
+                <el-row :gutter="20">
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <div class="color-picker-item">
+                      <label>主色调</label>
+                      <el-color-picker
+                        v-model="localCustomTheme.primaryColor"
+                        show-alpha
+                        size="large"
+                        @change="handleCustomColorChange"
+                      />
+                    </div>
+                  </el-col>
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <div class="color-picker-item">
+                      <label>顶部渐变起点</label>
+                      <el-color-picker
+                        v-model="localCustomTheme.headerStart"
+                        show-alpha
+                        size="large"
+                        @change="handleCustomColorChange"
+                      />
+                    </div>
+                  </el-col>
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <div class="color-picker-item">
+                      <label>顶部渐变终点</label>
+                      <el-color-picker
+                        v-model="localCustomTheme.headerEnd"
+                        show-alpha
+                        size="large"
+                        @change="handleCustomColorChange"
+                      />
+                    </div>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="20" style="margin-top: 16px">
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <div class="color-picker-item">
+                      <label>侧边栏背景</label>
+                      <el-color-picker
+                        v-model="localCustomTheme.sidebarBg"
+                        show-alpha
+                        size="large"
+                        @change="handleCustomColorChange"
+                      />
+                    </div>
+                  </el-col>
+                  <el-col :xs="24" :sm="12" :md="8">
+                    <div class="color-picker-item">
+                      <label>侧边栏激活色</label>
+                      <el-color-picker
+                        v-model="localCustomTheme.sidebarActive"
+                        show-alpha
+                        size="large"
+                        @change="handleCustomColorChange"
+                      />
+                    </div>
+                  </el-col>
+                </el-row>
+                <div class="preset-themes">
+                  <div class="preset-label">推荐配色方案</div>
+                  <div class="preset-list">
+                    <div
+                      v-for="preset in presetThemes"
+                      :key="preset.name"
+                      class="preset-item"
+                      :style="{ background: preset.gradient }"
+                      @click="applyPresetTheme(preset)"
+                      :title="preset.name"
+                    >
+                      <span class="preset-name">{{ preset.name }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="custom-actions">
+                  <el-button size="small" @click="resetCustomTheme">恢复默认</el-button>
+                  <el-button type="primary" size="small" @click="applyCustomTheme">
+                    应用自定义主题
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <el-divider content-position="left">通用设置</el-divider>
 
             <el-form-item label="语言设置">
               <el-select v-model="preferencesForm.language" style="width: 200px">
@@ -285,13 +422,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   UserFilled, Edit, Lock, Warning, CircleCheck,
-  Sunny, Moon, Monitor
+  Sunny, Moon, Monitor, Brush, CircleCheckFilled
 } from '@element-plus/icons-vue'
 import { authApi, userApi, archiveApi, todoApi } from '@/api'
+import { useTheme } from '@/composables/useTheme'
 
 const activeTab = ref('basic')
 const isEditing = ref(false)
@@ -381,6 +519,135 @@ const basicFormRef = ref(null)
 const passwordFormRef = ref(null)
 const prefFormRef = ref(null)
 
+const { themeMode, isDark, customTheme, customEnabled, setThemeMode, setCustomTheme, enableCustomTheme, resetCustomTheme: resetThemeToDefault, THEME_MODES } = useTheme()
+
+const customThemeEnabled = ref(customEnabled.value)
+
+const themeModes = [
+  { value: THEME_MODES.LIGHT, label: '浅色主题', desc: '明亮清爽，适合日间使用', icon: Sunny },
+  { value: THEME_MODES.DARK, label: '深色主题', desc: '护眼省电，适合夜间使用', icon: Moon },
+  { value: THEME_MODES.AUTO, label: '跟随系统', desc: '根据系统设置自动切换', icon: Monitor }
+]
+
+const effectiveTheme = computed(() => {
+  if (themeMode.value === THEME_MODES.AUTO) {
+    return isDark.value ? 'dark' : 'light'
+  }
+  return themeMode.value
+})
+
+const localCustomTheme = reactive({
+  primaryColor: '#409eff',
+  headerStart: '#667eea',
+  headerEnd: '#764ba2',
+  sidebarBg: '#545c64',
+  sidebarActive: '#ffd04b'
+})
+
+const presetThemes = [
+  {
+    name: '经典紫',
+    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    primaryColor: '#667eea',
+    headerStart: '#667eea',
+    headerEnd: '#764ba2',
+    sidebarBg: '#545c64',
+    sidebarActive: '#ffd04b'
+  },
+  {
+    name: '海洋蓝',
+    gradient: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
+    primaryColor: '#2193b0',
+    headerStart: '#2193b0',
+    headerEnd: '#6dd5ed',
+    sidebarBg: '#2c3e50',
+    sidebarActive: '#6dd5ed'
+  },
+  {
+    name: '森林绿',
+    gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+    primaryColor: '#11998e',
+    headerStart: '#11998e',
+    headerEnd: '#38ef7d',
+    sidebarBg: '#2d4a3e',
+    sidebarActive: '#38ef7d'
+  },
+  {
+    name: '落日橙',
+    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    primaryColor: '#f5576c',
+    headerStart: '#f093fb',
+    headerEnd: '#f5576c',
+    sidebarBg: '#4a3f55',
+    sidebarActive: '#ffd93d'
+  },
+  {
+    name: '深空灰',
+    gradient: 'linear-gradient(135deg, #232526 0%, #414345 100%)',
+    primaryColor: '#606266',
+    headerStart: '#232526',
+    headerEnd: '#414345',
+    sidebarBg: '#1a1a1a',
+    sidebarActive: '#c0c4cc'
+  },
+  {
+    name: '玫瑰金',
+    gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    primaryColor: '#ff9a9e',
+    headerStart: '#ff9a9e',
+    headerEnd: '#fecfef',
+    sidebarBg: '#5c4a52',
+    sidebarActive: '#ffecd2'
+  }
+]
+
+const selectThemeMode = (mode) => {
+  setThemeMode(mode)
+  preferencesForm.theme = mode
+}
+
+const handleCustomColorChange = () => {
+}
+
+const applyPresetTheme = (preset) => {
+  localCustomTheme.primaryColor = preset.primaryColor
+  localCustomTheme.headerStart = preset.headerStart
+  localCustomTheme.headerEnd = preset.headerEnd
+  localCustomTheme.sidebarBg = preset.sidebarBg
+  localCustomTheme.sidebarActive = preset.sidebarActive
+  applyCustomTheme()
+}
+
+const applyCustomTheme = () => {
+  setCustomTheme(localCustomTheme)
+  enableCustomTheme(true)
+  customThemeEnabled.value = true
+  ElMessage.success('自定义主题已应用')
+}
+
+const resetCustomTheme = () => {
+  resetThemeToDefault()
+  customThemeEnabled.value = false
+  localCustomTheme.primaryColor = customTheme.value.primaryColor
+  localCustomTheme.headerStart = customTheme.value.headerStart
+  localCustomTheme.headerEnd = customTheme.value.headerEnd
+  localCustomTheme.sidebarBg = customTheme.value.sidebarBg
+  localCustomTheme.sidebarActive = customTheme.value.sidebarActive
+  ElMessage.success('已恢复默认主题色')
+}
+
+watch(customThemeEnabled, (enabled) => {
+  enableCustomTheme(enabled)
+})
+
+if (customEnabled.value) {
+  localCustomTheme.primaryColor = customTheme.value.primaryColor
+  localCustomTheme.headerStart = customTheme.value.headerStart
+  localCustomTheme.headerEnd = customTheme.value.headerEnd
+  localCustomTheme.sidebarBg = customTheme.value.sidebarBg
+  localCustomTheme.sidebarActive = customTheme.value.sidebarActive
+}
+
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -404,6 +671,10 @@ const loadUserInfo = async () => {
     }
     if (res.data.preferences) {
       Object.assign(preferencesForm, res.data.preferences)
+      const savedTheme = localStorage.getItem('app_theme_mode')
+      if (!savedTheme && res.data.preferences.theme) {
+        setThemeMode(res.data.preferences.theme)
+      }
     }
   } catch (error) {
     console.error('加载用户信息失败:', error)
@@ -522,6 +793,7 @@ const handleChangePassword = async () => {
 const handleSavePreferences = async () => {
   savingPref.value = true
   try {
+    preferencesForm.theme = themeMode.value
     const res = await userApi.updatePreferences(preferencesForm)
     Object.assign(preferencesForm, res.data)
     ElMessage.success('偏好设置已保存')
@@ -574,16 +846,17 @@ onMounted(() => {
 }
 
 .profile-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border-radius: 12px;
   padding: 30px;
   margin-bottom: 20px;
-  color: white;
+  color: var(--header-text);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .avatar-section {
@@ -722,6 +995,280 @@ onMounted(() => {
 
 .preferences-form {
   padding: 20px 10px;
+}
+
+.divider-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.theme-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.section-header .section-label {
+  margin-bottom: 0;
+}
+
+.theme-mode-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.theme-mode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid var(--border-primary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--bg-card);
+  position: relative;
+}
+
+.theme-mode-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-mode-card.active {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.mode-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+.theme-mode-card.active .mode-icon {
+  background: var(--primary-color);
+  color: white;
+}
+
+.mode-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mode-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.mode-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.theme-preview-container {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.preview-device {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.preview-header {
+  background: var(--bg-tertiary);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.preview-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-red { background: #ff5f57; }
+.dot-yellow { background: #febc2e; }
+.dot-green { background: #28c840; }
+
+.preview-title {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.preview-body {
+  height: 200px;
+  transition: background-color 0.3s ease;
+}
+
+.preview-light {
+  background-color: #f5f7fa;
+}
+
+.preview-dark {
+  background-color: #1a1a1a;
+}
+
+.preview-top-bar {
+  height: 32px;
+  background: linear-gradient(135deg, var(--header-bg-start, #667eea) 0%, var(--header-bg-end, #764ba2) 100%);
+}
+
+.preview-layout {
+  display: flex;
+  height: calc(100% - 32px);
+}
+
+.preview-sidebar {
+  width: 60px;
+  background-color: var(--sidebar-bg, #545c64);
+  flex-shrink: 0;
+}
+
+.preview-content {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-card {
+  height: 24px;
+  border-radius: 4px;
+  background: var(--bg-card, #fff);
+}
+
+.preview-light .preview-card {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.preview-dark .preview-card {
+  background: #2a2a2a;
+}
+
+.card-1 { width: 70%; }
+.card-2 { width: 85%; }
+.card-3 { width: 60%; }
+
+.custom-theme-editor {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.color-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.color-picker-item label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.preset-themes {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.preset-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.preset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.preset-item {
+  height: 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.preset-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.preset-name {
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.custom-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-secondary);
 }
 
 .form-desc {

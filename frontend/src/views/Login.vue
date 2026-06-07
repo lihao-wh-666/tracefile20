@@ -51,11 +51,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Document } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
 const loginFormRef = ref(null)
@@ -112,15 +113,17 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
+  transition: background 0.3s ease;
 }
 
 .login-box {
   width: 400px;
   padding: 40px;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .login-header {
@@ -129,21 +132,24 @@ const handleLogin = async () => {
 }
 
 .login-icon {
-  color: #667eea;
+  color: var(--primary-color);
   margin-bottom: 10px;
+  transition: color 0.3s ease;
 }
 
 .login-title {
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
   font-weight: 600;
+  transition: color 0.3s ease;
 }
 
 .login-subtitle {
   font-size: 14px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin: 0;
+  transition: color 0.3s ease;
 }
 
 .login-form {
@@ -154,8 +160,9 @@ const handleLogin = async () => {
   width: 100%;
   height: 44px;
   font-size: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border: none;
+  transition: opacity 0.3s ease;
 }
 
 .login-btn:hover {
@@ -166,13 +173,15 @@ const handleLogin = async () => {
   text-align: center;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-tertiary);
+  transition: border-color 0.3s ease;
 }
 
 .login-footer p {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin: 0;
+  transition: color 0.3s ease;
 }
 
 @media (max-width: 480px) {

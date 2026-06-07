@@ -5,6 +5,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import './styles/responsive.css'
+import './styles/theme.css'
+import { useTheme } from './composables/useTheme'
 
 const app = createApp(App)
 
@@ -14,4 +16,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(ElementPlus)
 app.use(router)
+
+useTheme()
+
 app.mount('#app')

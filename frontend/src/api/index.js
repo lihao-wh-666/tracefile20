@@ -37,16 +37,26 @@ api.interceptors.response.use(
   response => response,
   error => {
     console.error('API Error:', error)
-    if (error.response && error.response.status === 403) {
-      const detail = error.response.data?.detail || ''
-      if (detail.includes('锁定') || detail.includes('登录失败')) {
+    if (error.response) {
+      if (error.response.status === 401) {
+        localStorage.removeItem('user')
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
-    }
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      if (error.response.status === 403) {
+        const detail = error.response.data?.detail || ''
+        if (detail.includes('锁定') || detail.includes('登录失败')) {
+          return Promise.reject(error)
+        }
+        if (detail.includes('认证') || detail.includes('未提供') || detail.includes('权限')) {
+          localStorage.removeItem('user')
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
+          return Promise.reject(error)
+        }
       }
     }
     return Promise.reject(error)

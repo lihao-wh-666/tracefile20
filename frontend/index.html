@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>案卷管理系统</title>
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('app_theme_mode') || 'light';
+          var isDark = false;
+          if (mode === 'dark') {
+            isDark = true;
+          } else if (mode === 'auto') {
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          var html = document.documentElement;
+          html.classList.add(isDark ? 'theme-dark' : 'theme-light');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
