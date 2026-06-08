@@ -2,10 +2,27 @@
   <div class="archives">
     <div class="page-header">
       <h2 class="page-title">{{ t('archives.title') }}</h2>
-      <el-button type="primary" @click="handleAdd" class="add-btn">
-        <el-icon><Plus /></el-icon>
-        <span class="btn-text">{{ t('common.add') + t('archives.archiveTitle').slice(0, 2) }}</span>
-      </el-button>
+      <div class="header-actions">
+        <el-dropdown @command="handleExportCommand" class="export-dropdown" :disabled="selectedIds.length === 0">
+          <el-button type="success">
+            <el-icon><Download /></el-icon>
+            <span class="btn-text">导出{{ selectedIds.length > 0 ? `(${selectedIds.length})` : '' }}</span>
+            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="excel">导出 Excel (.xlsx)</el-dropdown-item>
+              <el-dropdown-item command="pdf">导出 PDF</el-dropdown-item>
+              <el-dropdown-item command="word">导出 Word (.docx)</el-dropdown-item>
+              <el-dropdown-item command="csv">导出 CSV</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button type="primary" @click="handleAdd" class="add-btn">
+          <el-icon><Plus /></el-icon>
+          <span class="btn-text">{{ t('common.add') + t('archives.archiveTitle').slice(0, 2) }}</span>
+        </el-button>
+      </div>
     </div>
 
     <el-card class="main-card">
@@ -48,7 +65,8 @@
       </el-form>
 
       <div class="table-container">
-        <el-table :data="archives" stripe border class="responsive-table">
+        <el-table :data="archives" stripe border class="responsive-table" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="archive_number" :label="t('archives.archiveNumber')" min-width="110" />
           <el-table-column prop="title" :label="t('archives.archiveTitle')" min-width="150" show-overflow-tooltip />
           <el-table-column prop="category_name" :label="t('archives.category')" min-width="90" />
@@ -209,6 +227,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Download, ArrowDown } from '@element-plus/icons-vue'
 import { archiveApi, categoryApi, authApi } from '@/api'
 import { useLocale } from '@/composables/useLocale'
 
@@ -217,6 +236,8 @@ const { t, locale } = useLocale()
 const archives = ref([])
 const categories = ref([])
 const dialogVisible = ref(false)
+const selectedIds = ref([])
+const selectedRows = ref([])
 const isEdit = ref(false)
 const isView = ref(false)
 const formRef = ref(null)
@@ -331,6 +352,81 @@ const handleReset = () => {
   searchForm.status = ''
   pagination.page = 1
   loadArchives()
+}
+
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
+  selectedIds.value = selection.map(item => item.id)
+}
+
+const downloadFile = (blob, filename) => {
+  const url = window.URL.createObjectURL(new Blob([blob]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
+const getFilenameFromContentDisposition = (contentDisposition, fallbackName) => {
+  if (!contentDisposition) return fallbackName
+  const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition)
+  if (matches && matches[1]) {
+    let filename = matches[1].replace(/['"]/g, '')
+    try {
+      filename = decodeURIComponent(filename)
+    } catch (e) {
+      // keep original
+    }
+    return filename
+  }
+  return fallbackName
+}
+
+const handleExportCommand = async (format) => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请先选择要导出的案卷')
+    return
+  }
+
+  const formatNames = {
+    excel: 'Excel',
+    pdf: 'PDF',
+    word: 'Word',
+    csv: 'CSV'
+  }
+
+  try {
+    const res = await archiveApi.export({
+      ids: selectedIds.value,
+      format: format
+    })
+
+    const contentDisposition = res.headers['content-disposition']
+    const fallbackName = `archives_export_${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'xlsx' : format === 'word' ? 'docx' : format}`
+    const filename = getFilenameFromContentDisposition(contentDisposition, fallbackName)
+
+    downloadFile(res.data, filename)
+    ElMessage.success(`导出${formatNames[format] || format}成功`)
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (error.response && error.response.data && error.response.data instanceof Blob) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const err = JSON.parse(reader.result)
+          ElMessage.error(err.detail || '导出失败')
+        } catch (e) {
+          ElMessage.error('导出失败')
+        }
+      }
+      reader.readAsText(error.response.data)
+    } else {
+      ElMessage.error(error?.response?.data?.detail || '导出失败')
+    }
+  }
 }
 
 const handlePageChange = () => loadArchives()
@@ -567,6 +663,16 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.export-dropdown {
+  flex-shrink: 0;
+}
+
 .add-btn {
   flex-shrink: 0;
 }
@@ -674,7 +780,17 @@ onUnmounted(() => {
     align-items: flex-start;
   }
 
+  .header-actions {
+    width: 100%;
+  }
+
+  .export-dropdown,
   .add-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .export-dropdown .el-button {
     width: 100%;
     justify-content: center;
   }

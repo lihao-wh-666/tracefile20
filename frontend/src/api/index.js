@@ -97,7 +97,8 @@ export const archiveApi = {
   delete: (id) => api.delete(`/archives/${id}/`),
   submitForReview: (id) => api.post(`/archives/${id}/submit_for_review/`),
   approve: (id, data) => api.post(`/archives/${id}/approve/`, data),
-  reject: (id, data) => api.post(`/archives/${id}/reject/`, data)
+  reject: (id, data) => api.post(`/archives/${id}/reject/`, data),
+  export: (data) => api.post('/archives/export/', data, { responseType: 'blob' })
 }
 
 export const archiveLogApi = {
