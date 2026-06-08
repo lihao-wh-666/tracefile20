@@ -14,7 +14,7 @@
         />
         <h1 class="header-title">
           <el-icon size="24" class="header-icon"><Document /></el-icon>
-          <span>案卷管理系统</span>
+          <span>{{ t('header.title') }}</span>
         </h1>
         <div class="header-right">
           <el-button 
@@ -22,7 +22,7 @@
             :icon="isDark ? Sunny : Moon" 
             circle 
             @click="toggleTheme"
-            :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
+            :title="isDark ? t('header.lightMode') : t('header.darkMode')"
           />
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
             <el-button 
@@ -35,20 +35,20 @@
           <el-dropdown @command="handleUserCommand" class="user-dropdown">
             <span class="user-info">
               <el-icon class="user-icon"><UserFilled /></el-icon>
-              <span class="username">{{ userInfo?.username || '用户' }}</span>
+              <span class="username">{{ userInfo?.username || t('common.unknown') }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item disabled>
-                  <span>用户名：{{ userInfo?.username }}</span>
+                  <span>{{ t('profile.username') }}：{{ userInfo?.username }}</span>
                 </el-dropdown-item>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
-                  个人中心
+                  {{ t('header.profile') }}
                 </el-dropdown-item>
                 <el-dropdown-item command="logout" divided>
                   <el-icon><SwitchButton /></el-icon>
-                  退出登录
+                  {{ t('header.logout') }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -68,23 +68,23 @@
         >
           <el-menu-item index="/dashboard">
             <el-icon><HomeFilled /></el-icon>
-            <span>仪表盘</span>
+            <span>{{ t('sidebar.dashboard') }}</span>
           </el-menu-item>
           <el-menu-item index="/categories">
             <el-icon><Folder /></el-icon>
-            <span>分类管理</span>
+            <span>{{ t('sidebar.categories') }}</span>
           </el-menu-item>
           <el-menu-item index="/archives">
             <el-icon><Files /></el-icon>
-            <span>案卷管理</span>
+            <span>{{ t('sidebar.archives') }}</span>
           </el-menu-item>
           <el-menu-item index="/todos">
             <el-icon><List /></el-icon>
-            <span>待办事项</span>
+            <span>{{ t('sidebar.todos') }}</span>
           </el-menu-item>
           <el-menu-item index="/profile">
             <el-icon><User /></el-icon>
-            <span>个人中心</span>
+            <span>{{ t('sidebar.profile') }}</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -95,13 +95,13 @@
 
     <el-drawer
       v-model="notificationVisible"
-      title="待办消息提醒"
+      :title="t('header.notifications')"
       direction="rtl"
       size="400px"
       class="notification-drawer"
     >
       <div class="notification-header">
-        <span>共 {{ notificationList.length }} 条待办</span>
+        <span>{{ t('header.totalTodos') }} {{ notificationList.length }} {{ t('header.totalTodosSuffix') }}</span>
         <el-button 
           type="primary" 
           link 
@@ -109,7 +109,7 @@
           @click="handleMarkAllRead"
           :disabled="unreadCount === 0"
         >
-          全部标为已读
+          {{ t('header.markAllRead') }}
         </el-button>
       </div>
       <div class="notification-list">
@@ -136,18 +136,18 @@
               :model-value="item.status === 'completed'" 
               @change="handleToggleStatus(item)"
             >
-              已完成
+              {{ t('header.completed') }}
             </el-checkbox>
             <el-button type="primary" link size="small" @click="handleMarkRead(item)" v-if="!item.is_read">
-              标为已读
+              {{ t('header.markRead') }}
             </el-button>
           </div>
         </div>
-        <el-empty v-if="notificationList.length === 0" description="暂无待办消息" />
+        <el-empty v-if="notificationList.length === 0" :description="t('header.noNotifications')" />
       </div>
       <div class="notification-footer">
         <el-button type="primary" @click="goToTodoList" style="width: 100%">
-          查看全部待办
+          {{ t('header.viewAll') }}
         </el-button>
       </div>
     </el-drawer>
@@ -169,23 +169,23 @@
       >
         <el-menu-item index="/dashboard">
           <el-icon><HomeFilled /></el-icon>
-          <span>仪表盘</span>
+          <span>{{ t('sidebar.dashboard') }}</span>
         </el-menu-item>
         <el-menu-item index="/categories">
           <el-icon><Folder /></el-icon>
-          <span>分类管理</span>
+          <span>{{ t('sidebar.categories') }}</span>
         </el-menu-item>
         <el-menu-item index="/archives">
           <el-icon><Files /></el-icon>
-          <span>案卷管理</span>
+          <span>{{ t('sidebar.archives') }}</span>
         </el-menu-item>
         <el-menu-item index="/todos">
           <el-icon><List /></el-icon>
-          <span>待办事项</span>
+          <span>{{ t('sidebar.todos') }}</span>
         </el-menu-item>
         <el-menu-item index="/profile">
           <el-icon><User /></el-icon>
-          <span>个人中心</span>
+          <span>{{ t('sidebar.profile') }}</span>
         </el-menu-item>
       </el-menu>
     </el-drawer>
@@ -246,22 +246,20 @@ const handleUserCommand = async (command) => {
     router.push('/profile')
   } else if (command === 'logout') {
     try {
-      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      await ElMessageBox.confirm(t('header.logoutConfirm'), t('common.warning'), {
+        confirmButtonText: t('common.confirm'),
+        cancelButtonText: t('common.cancel'),
         type: 'warning'
       })
       try {
         await authApi.logout()
       } catch (e) {
-        // 忽略登出 API 错误
       }
       localStorage.removeItem('user')
       userInfo.value = null
-      ElMessage.success('已退出登录')
+      ElMessage.success(t('header.loggedOut'))
       router.push('/login')
     } catch (e) {
-      // 用户取消
     }
   }
 }
@@ -280,10 +278,10 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now - date
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  return date.toLocaleDateString('zh-CN')
+  if (diff < 60000) return t('header.justNow')
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}${t('header.minutesAgo')}`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}${t('header.hoursAgo')}`
+  return date.toLocaleDateString(locale.value)
 }
 
 const loadUnreadCount = async () => {
@@ -309,7 +307,7 @@ const handleMarkAllRead = async () => {
     await todoApi.markAllRead()
     notificationList.value.forEach(item => item.is_read = true)
     unreadCount.value = 0
-    ElMessage.success('已全部标记为已读')
+    ElMessage.success(t('header.allMarkedRead'))
   } catch (error) {
     console.error('标记全部已读失败:', error)
   }
@@ -329,7 +327,7 @@ const handleToggleStatus = async (item) => {
   try {
     const res = await todoApi.toggleStatus(item.id)
     Object.assign(item, res.data)
-    ElMessage.success(item.status === 'completed' ? '已标记为完成' : '已标记为待处理')
+    ElMessage.success(item.status === 'completed' ? t('header.statusCompleted') : t('header.statusPending'))
   } catch (error) {
     console.error('切换状态失败:', error)
   }

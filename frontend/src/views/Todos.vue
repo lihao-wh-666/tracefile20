@@ -1,33 +1,33 @@
 <template>
   <div class="todos">
     <div class="page-header">
-      <h2 class="page-title">待办事项管理</h2>
+      <h2 class="page-title">{{ t('todos.title') }}</h2>
       <el-button type="primary" :icon="Plus" @click="handleAdd">
-        新建待办
+        {{ t('common.add') + t('todos.todoTitle').slice(0, 2) }}
       </el-button>
     </div>
 
     <el-card class="filter-card">
       <el-form :inline="true" :model="filterForm" class="filter-form">
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" placeholder="全部状态" clearable @change="loadData">
-            <el-option label="待处理" value="pending" />
-            <el-option label="已完成" value="completed" />
+        <el-form-item :label="t('todos.status')">
+          <el-select v-model="filterForm.status" :placeholder="t('common.all') + t('todos.status')" clearable @change="loadData">
+            <el-option :label="t('todos.pending')" value="pending" />
+            <el-option :label="t('todos.completed')" value="completed" />
           </el-select>
         </el-form-item>
-        <el-form-item label="优先级">
-          <el-select v-model="filterForm.priority" placeholder="全部优先级" clearable @change="loadData">
-            <el-option label="高" value="high" />
-            <el-option label="中" value="medium" />
-            <el-option label="低" value="low" />
+        <el-form-item :label="t('todos.priority')">
+          <el-select v-model="filterForm.priority" :placeholder="t('common.all') + t('todos.priority')" clearable @change="loadData">
+            <el-option :label="t('todos.high')" value="high" />
+            <el-option :label="t('todos.medium')" value="medium" />
+            <el-option :label="t('todos.low')" value="low" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关键词">
-          <el-input v-model="filterForm.search" placeholder="搜索标题或描述" clearable @keyup.enter="loadData" />
+        <el-form-item :label="t('common.search')">
+          <el-input v-model="filterForm.search" :placeholder="t('common.search') + '...'" clearable @keyup.enter="loadData" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">搜索</el-button>
-          <el-button @click="resetFilter">重置</el-button>
+          <el-button type="primary" @click="loadData">{{ t('common.search') }}</el-button>
+          <el-button @click="resetFilter">{{ t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -35,49 +35,49 @@
     <el-card class="table-card">
       <el-table :data="tableData" stripe class="responsive-table" v-loading="loading">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="title" label="待办标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="priority_display" label="优先级" width="100">
+        <el-table-column prop="title" :label="t('todos.todoTitle')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="description" :label="t('todos.description')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="priority_display" :label="t('todos.priority')" width="100">
           <template #default="scope">
             <el-tag :type="getPriorityType(scope.row.priority)" size="small">
               {{ scope.row.priority_display }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status_display" label="状态" width="100">
+        <el-table-column prop="status_display" :label="t('todos.status')" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.status === 'completed' ? 'success' : 'warning'" size="small">
               {{ scope.row.status_display }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="due_date" label="截止时间" width="170">
+        <el-table-column prop="due_date" :label="t('todos.dueDate')" width="170">
           <template #default="scope">
             {{ formatDateTime(scope.row.due_date) }}
           </template>
         </el-table-column>
-        <el-table-column prop="is_read" label="状态" width="80">
+        <el-table-column prop="is_read" :label="t('todos.isRead')" width="80">
           <template #default="scope">
             <el-tag :type="scope.row.is_read ? 'info' : 'danger'" size="small">
-              {{ scope.row.is_read ? '已读' : '未读' }}
+              {{ scope.row.is_read ? t('common.view') : t('common.info') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="170">
+        <el-table-column prop="created_at" :label="t('todos.createdAt')" width="170">
           <template #default="scope">
             {{ formatDateTime(scope.row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column :label="t('common.view')" width="180" fixed="right">
           <template #default="scope">
             <el-button type="primary" link size="small" @click="handleToggleStatus(scope.row)">
-              {{ scope.row.status === 'completed' ? '取消完成' : '标记完成' }}
+              {{ scope.row.status === 'completed' ? t('common.reset') : t('todos.completed') }}
             </el-button>
             <el-button type="primary" link size="small" @click="handleEdit(scope.row)">
-              编辑
+              {{ t('common.edit') }}
             </el-button>
             <el-button type="danger" link size="small" @click="handleDelete(scope.row)">
-              删除
+              {{ t('common.delete') }}
             </el-button>
           </template>
         </el-table-column>
@@ -97,48 +97,48 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑待办' : '新建待办'"
+      :title="isEdit ? t('common.edit') + t('todos.todoTitle') : t('common.add') + t('todos.todoTitle')"
       width="500px"
       @close="resetForm"
     >
       <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入待办标题" />
+        <el-form-item :label="t('todos.todoTitle')" prop="title">
+          <el-input v-model="form.title" :placeholder="t('validation.required')" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item :label="t('todos.description')">
           <el-input
             v-model="form.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入待办描述"
+            :placeholder="t('common.input') + t('todos.description')"
           />
         </el-form-item>
-        <el-form-item label="优先级" prop="priority">
-          <el-select v-model="form.priority" placeholder="请选择优先级">
-            <el-option label="高" value="high" />
-            <el-option label="中" value="medium" />
-            <el-option label="低" value="low" />
+        <el-form-item :label="t('todos.priority')" prop="priority">
+          <el-select v-model="form.priority" :placeholder="t('common.select') + t('todos.priority')">
+            <el-option :label="t('todos.high')" value="high" />
+            <el-option :label="t('todos.medium')" value="medium" />
+            <el-option :label="t('todos.low')" value="low" />
           </el-select>
         </el-form-item>
-        <el-form-item label="截止时间">
+        <el-form-item :label="t('todos.dueDate')">
           <el-date-picker
             v-model="form.due_date"
             type="datetime"
-            placeholder="选择截止时间"
+            :placeholder="t('common.select') + t('todos.dueDate')"
             style="width: 100%"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择状态">
-            <el-option label="待处理" value="pending" />
-            <el-option label="已完成" value="completed" />
+        <el-form-item :label="t('todos.status')" prop="status">
+          <el-select v-model="form.status" :placeholder="t('common.select') + t('todos.status')">
+            <el-option :label="t('todos.pending')" value="pending" />
+            <el-option :label="t('todos.completed')" value="completed" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmit">{{ t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -149,6 +149,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { todoApi } from '@/api'
+import { useLocale } from '@/composables/useLocale'
+
+const { t, locale } = useLocale()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -176,9 +179,9 @@ const form = reactive({
 })
 
 const rules = {
-  title: [{ required: true, message: '请输入待办标题', trigger: 'blur' }],
-  priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  title: [{ required: true, message: t('validation.required'), trigger: 'blur' }],
+  priority: [{ required: true, message: t('validation.required'), trigger: 'change' }],
+  status: [{ required: true, message: t('validation.required'), trigger: 'change' }]
 }
 
 const getPriorityType = (priority) => {
@@ -189,7 +192,7 @@ const getPriorityType = (priority) => {
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
+  return date.toLocaleString(locale.value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -215,7 +218,7 @@ const loadData = async () => {
     total.value = res.data.count || tableData.value.length
   } catch (error) {
     console.error('加载待办列表失败:', error)
-    ElMessage.error('加载待办列表失败')
+    ElMessage.error(t('errors.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -269,16 +272,16 @@ const handleSubmit = async () => {
       try {
         if (isEdit.value) {
           await todoApi.update(form.id, form)
-          ElMessage.success('更新成功')
+          ElMessage.success(t('common.success'))
         } else {
           await todoApi.create(form)
-          ElMessage.success('创建成功')
+          ElMessage.success(t('common.success'))
         }
         dialogVisible.value = false
         loadData()
       } catch (error) {
         console.error('提交失败:', error)
-        ElMessage.error('提交失败')
+        ElMessage.error(t('errors.saveFailed'))
       }
     }
   })
@@ -286,18 +289,18 @@ const handleSubmit = async () => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条待办吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('common.delete') + '?', t('common.warning'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     await todoApi.delete(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.success'))
     loadData()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error(t('errors.deleteFailed'))
     }
   }
 }
@@ -306,10 +309,10 @@ const handleToggleStatus = async (row) => {
   try {
     const res = await todoApi.toggleStatus(row.id)
     Object.assign(row, res.data)
-    ElMessage.success(row.status === 'completed' ? '已标记为完成' : '已取消完成')
+    ElMessage.success(row.status === 'completed' ? t('common.success') : t('common.success'))
   } catch (error) {
     console.error('切换状态失败:', error)
-    ElMessage.error('切换状态失败')
+    ElMessage.error(t('errors.updateFailed'))
   }
 }
 

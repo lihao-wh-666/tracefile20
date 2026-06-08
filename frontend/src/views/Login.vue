@@ -3,8 +3,8 @@
     <div class="login-box">
       <div class="login-header">
         <el-icon size="48" class="login-icon"><Document /></el-icon>
-        <h1 class="login-title">案卷管理系统</h1>
-        <p class="login-subtitle">请登录您的账号</p>
+        <h1 class="login-title">{{ t('login.title') }}</h1>
+        <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
       <el-form
         ref="loginFormRef"
@@ -16,7 +16,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
-            placeholder="请输入用户名"
+            :placeholder="t('login.username')"
             size="large"
             :prefix-icon="User"
           />
@@ -25,7 +25,7 @@
           <el-input
             v-model="loginForm.password"
             type="password"
-            placeholder="请输入密码"
+            :placeholder="t('login.password')"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -39,7 +39,7 @@
             :loading="loading"
             @click="handleLogin"
           >
-            登 录
+            {{ t('login.login') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -57,10 +57,13 @@ import { ElMessage } from 'element-plus'
 import { User, Lock, Document } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
 import { useTheme } from '@/composables/useTheme'
+import { useLocale } from '@/composables/useLocale'
 
 const router = useRouter()
 const loginFormRef = ref(null)
 const loading = ref(false)
+
+const { t } = useLocale()
 
 onMounted(async () => {
   try {
@@ -77,10 +80,10 @@ const loginForm = reactive({
 
 const loginRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: t('login.usernameRequired'), trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
+    { required: true, message: t('login.passwordRequired'), trigger: 'blur' }
   ]
 }
 
@@ -95,10 +98,10 @@ const handleLogin = async () => {
         password: loginForm.password
       })
       localStorage.setItem('user', JSON.stringify(res.data))
-      ElMessage.success('登录成功')
+      ElMessage.success(t('login.loginSuccess'))
       router.push('/dashboard')
     } catch (error) {
-      const detail = error.response?.data?.detail || '登录失败，请检查用户名和密码'
+      const detail = error.response?.data?.detail || t('login.loginFailed')
       ElMessage.error(detail)
     } finally {
       loading.value = false

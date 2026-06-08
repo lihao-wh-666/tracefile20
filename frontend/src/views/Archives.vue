@@ -1,10 +1,10 @@
 <template>
   <div class="archives">
     <div class="page-header">
-      <h2 class="page-title">案卷管理</h2>
+      <h2 class="page-title">{{ t('archives.title') }}</h2>
       <el-button type="primary" @click="handleAdd" class="add-btn">
         <el-icon><Plus /></el-icon>
-        <span class="btn-text">新增案卷</span>
+        <span class="btn-text">{{ t('common.add') + t('archives.archiveTitle').slice(0, 2) }}</span>
       </el-button>
     </div>
 
@@ -12,13 +12,13 @@
       <el-form :model="searchForm" class="search-form">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="关键词" class="form-item">
-              <el-input v-model="searchForm.search" placeholder="标题/编号/描述" clearable class="full-width" />
+            <el-form-item :label="t('common.search')" class="form-item">
+              <el-input v-model="searchForm.search" :placeholder="t('common.search') + '...'" clearable class="full-width" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="分类" class="form-item">
-              <el-select v-model="searchForm.category" placeholder="请选择" clearable class="full-width">
+            <el-form-item :label="t('archives.category')" class="form-item">
+              <el-select v-model="searchForm.category" :placeholder="t('common.select')" clearable class="full-width">
                 <el-option
                   v-for="cat in categories"
                   :key="cat.id"
@@ -29,19 +29,19 @@
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="状态" class="form-item">
-              <el-select v-model="searchForm.status" placeholder="请选择" clearable class="full-width">
-                <el-option label="草稿" value="draft" />
-                <el-option label="待审核" value="pending" />
-                <el-option label="已通过" value="approved" />
-                <el-option label="已驳回" value="rejected" />
+            <el-form-item :label="t('archives.status')" class="form-item">
+              <el-select v-model="searchForm.status" :placeholder="t('common.select')" clearable class="full-width">
+                <el-option :label="t('archives.draft')" value="draft" />
+                <el-option :label="t('archives.pending')" value="pending" />
+                <el-option :label="t('archives.approved')" value="approved" />
+                <el-option :label="t('archives.rejected')" value="rejected" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="24" :lg="6">
             <el-form-item class="form-item action-btns">
-              <el-button type="primary" @click="handleSearch" class="search-btn">搜索</el-button>
-              <el-button @click="handleReset" class="reset-btn">重置</el-button>
+              <el-button type="primary" @click="handleSearch" class="search-btn">{{ t('common.search') }}</el-button>
+              <el-button @click="handleReset" class="reset-btn">{{ t('common.reset') }}</el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -49,28 +49,28 @@
 
       <div class="table-container">
         <el-table :data="archives" stripe border class="responsive-table">
-          <el-table-column prop="archive_number" label="案卷编号" min-width="110" />
-          <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="category_name" label="分类" min-width="90" />
-          <el-table-column prop="status_display" label="状态" width="90">
+          <el-table-column prop="archive_number" :label="t('archives.archiveNumber')" min-width="110" />
+          <el-table-column prop="title" :label="t('archives.archiveTitle')" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="category_name" :label="t('archives.category')" min-width="90" />
+          <el-table-column prop="status_display" :label="t('archives.status')" width="90">
             <template #default="scope">
               <el-tag :type="getStatusType(scope.row.status)" size="small">
                 {{ scope.row.status_display }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="created_by" label="创建人" width="90" />
-          <el-table-column prop="created_at" label="创建时间" min-width="150">
+          <el-table-column prop="created_by" :label="t('archives.createdBy')" width="90" />
+          <el-table-column prop="created_at" :label="t('archives.createdAt')" min-width="150">
             <template #default="scope">
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" fixed="right" width="150">
+          <el-table-column :label="t('common.view')" fixed="right" width="150">
             <template #default="scope">
               <div class="action-buttons">
-                <el-button type="primary" link size="small" @click="handleView(scope.row)">查看</el-button>
-                <el-button type="success" link size="small" @click="handleEdit(scope.row)">编辑</el-button>
-                <el-button type="danger" link size="small" @click="handleDelete(scope.row)">删除</el-button>
+                <el-button type="primary" link size="small" @click="handleView(scope.row)">{{ t('common.view') }}</el-button>
+                <el-button type="success" link size="small" @click="handleEdit(scope.row)">{{ t('common.edit') }}</el-button>
+                <el-button type="danger" link size="small" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
               </div>
             </template>
           </el-table-column>
@@ -92,14 +92,14 @@
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="dialogWidth" class="form-dialog">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="dialog-form">
-        <el-form-item label="案卷编号" prop="archive_number">
+        <el-form-item :label="t('archives.archiveNumber')" prop="archive_number">
           <el-input v-model="form.archive_number" :disabled="isView" />
         </el-form-item>
-        <el-form-item label="案卷标题" prop="title">
+        <el-form-item :label="t('archives.archiveTitle')" prop="title">
           <el-input v-model="form.title" :disabled="isView" />
         </el-form-item>
-        <el-form-item label="所属分类" prop="category">
-          <el-select v-model="form.category" placeholder="请选择分类" :disabled="isView" class="full-width">
+        <el-form-item :label="t('archives.category')" prop="category">
+          <el-select v-model="form.category" :placeholder="t('common.select') + t('archives.category')" :disabled="isView" class="full-width">
             <el-option
               v-for="cat in categories"
               :key="cat.id"
@@ -108,27 +108,27 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+        <el-form-item :label="t('archives.status')" prop="status">
           <el-select v-model="form.status" :disabled="isView" class="full-width">
-            <el-option label="草稿" value="draft" />
-            <el-option label="待审核" value="pending" />
-            <el-option label="已通过" value="approved" />
-            <el-option label="已驳回" value="rejected" />
+            <el-option :label="t('archives.draft')" value="draft" />
+            <el-option :label="t('archives.pending')" value="pending" />
+            <el-option :label="t('archives.approved')" value="approved" />
+            <el-option :label="t('archives.rejected')" value="rejected" />
           </el-select>
         </el-form-item>
-        <el-form-item label="案卷描述" prop="description">
+        <el-form-item :label="t('archives.description')" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="4" :disabled="isView" />
         </el-form-item>
-        <el-form-item v-if="isView" label="创建人">
+        <el-form-item v-if="isView" :label="t('archives.createdBy')">
           <span>{{ form.created_by }}</span>
         </el-form-item>
-        <el-form-item v-if="isView" label="创建时间">
+        <el-form-item v-if="isView" :label="t('archives.createdAt')">
           <span>{{ formatDate(form.created_at) }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button v-if="!isView" type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.close') }}</el-button>
+        <el-button v-if="!isView" type="primary" @click="handleSubmit">{{ t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -138,6 +138,9 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { archiveApi, categoryApi } from '@/api'
+import { useLocale } from '@/composables/useLocale'
+
+const { t, locale } = useLocale()
 
 const archives = ref([])
 const categories = ref([])
@@ -180,14 +183,14 @@ const form = reactive({
 })
 
 const rules = {
-  archive_number: [{ required: true, message: '请输入案卷编号', trigger: 'blur' }],
-  title: [{ required: true, message: '请输入案卷标题', trigger: 'blur' }],
-  category: [{ required: true, message: '请选择分类', trigger: 'change' }]
+  archive_number: [{ required: true, message: t('validation.required'), trigger: 'blur' }],
+  title: [{ required: true, message: t('validation.required'), trigger: 'blur' }],
+  category: [{ required: true, message: t('validation.required'), trigger: 'change' }]
 }
 
 const dialogTitle = computed(() => {
-  if (isView.value) return '查看案卷'
-  return isEdit.value ? '编辑案卷' : '新增案卷'
+  if (isView.value) return t('common.view') + t('archives.archiveTitle').slice(0, 2)
+  return isEdit.value ? t('common.edit') + t('archives.archiveTitle').slice(0, 2) : t('common.add') + t('archives.archiveTitle').slice(0, 2)
 })
 
 const getStatusType = (status) => {
@@ -202,7 +205,7 @@ const getStatusType = (status) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  return new Date(dateStr).toLocaleString(locale.value)
 }
 
 const loadCategories = async () => {
@@ -229,7 +232,7 @@ const loadArchives = async () => {
     archives.value = res.data.results || res.data
     pagination.total = res.data.count || archives.value.length
   } catch (error) {
-    ElMessage.error('加载案卷失败')
+    ElMessage.error(t('errors.loadFailed'))
   }
 }
 
@@ -283,15 +286,17 @@ const handleView = (row) => {
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm('确定要删除该案卷吗？', '提示', {
+  ElMessageBox.confirm(t('common.delete') + '?', t('common.warning'), {
+    confirmButtonText: t('common.confirm'),
+    cancelButtonText: t('common.cancel'),
     type: 'warning'
   }).then(async () => {
     try {
       await archiveApi.delete(row.id)
-      ElMessage.success('删除成功')
+      ElMessage.success(t('common.success'))
       loadArchives()
     } catch (error) {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('errors.deleteFailed'))
     }
   })
 }
@@ -305,16 +310,16 @@ const handleSubmit = async () => {
 
     if (isEdit.value) {
       await archiveApi.update(form.id, data)
-      ElMessage.success('更新成功')
+      ElMessage.success(t('common.success'))
     } else {
       await archiveApi.create(data)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('common.success'))
     }
     dialogVisible.value = false
     loadArchives()
   } catch (error) {
     if (error !== false) {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('errors.saveFailed'))
     }
   }
 }

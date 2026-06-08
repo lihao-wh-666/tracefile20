@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <h2 class="page-title">仪表盘</h2>
+    <h2 class="page-title">{{ t('dashboard.title') }}</h2>
     
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="12" :md="6" :lg="6">
@@ -9,7 +9,7 @@
             <el-icon size="36" color="#409EFF" class="stat-icon"><Document /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.totalArchives }}</div>
-              <div class="stat-label">案卷总数</div>
+              <div class="stat-label">{{ t('profile.totalArchives') }}</div>
             </div>
           </div>
         </el-card>
@@ -20,7 +20,7 @@
             <el-icon size="36" color="#67C23A" class="stat-icon"><FolderOpened /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.totalCategories }}</div>
-              <div class="stat-label">分类总数</div>
+              <div class="stat-label">{{ t('categories.title') }}</div>
             </div>
           </div>
         </el-card>
@@ -31,7 +31,7 @@
             <el-icon size="36" color="#E6A23C" class="stat-icon"><CircleCheck /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.approvedArchives }}</div>
-              <div class="stat-label">已通过</div>
+              <div class="stat-label">{{ t('archives.approved') }}</div>
             </div>
           </div>
         </el-card>
@@ -42,7 +42,7 @@
             <el-icon size="36" color="#F56C6C" class="stat-icon"><Clock /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ stats.pendingArchives }}</div>
-              <div class="stat-label">待审核</div>
+              <div class="stat-label">{{ t('archives.pending') }}</div>
             </div>
           </div>
         </el-card>
@@ -53,13 +53,13 @@
       <el-col :xs="24" :sm="24" :md="24" :lg="12">
         <el-card class="table-card">
           <template #header>
-            <span class="card-title">最近案卷</span>
+            <span class="card-title">{{ t('dashboard.recentActivity') }}</span>
           </template>
           <div class="table-container">
             <el-table :data="recentArchives" stripe class="responsive-table">
-              <el-table-column prop="archive_number" label="案卷编号" min-width="100" />
-              <el-table-column prop="title" label="标题" min-width="120" show-overflow-tooltip />
-              <el-table-column prop="status_display" label="状态" width="90">
+              <el-table-column prop="archive_number" :label="t('archives.archiveNumber')" min-width="100" />
+              <el-table-column prop="title" :label="t('archives.archiveTitle')" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="status_display" :label="t('archives.status')" width="90">
                 <template #default="scope">
                   <el-tag :type="getStatusType(scope.row.status)" size="small">
                     {{ scope.row.status_display }}
@@ -73,12 +73,12 @@
       <el-col :xs="24" :sm="24" :md="24" :lg="12">
         <el-card class="table-card">
           <template #header>
-            <span class="card-title">分类统计</span>
+            <span class="card-title">{{ t('categories.title') }}</span>
           </template>
           <div class="table-container">
             <el-table :data="categoryStats" stripe class="responsive-table">
-              <el-table-column prop="name" label="分类名称" min-width="120" show-overflow-tooltip />
-              <el-table-column prop="count" label="案卷数量" width="100" />
+              <el-table-column prop="name" :label="t('categories.categoryName')" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="count" :label="t('dashboard.totalArchives', '案卷数量')" width="100" />
             </el-table>
           </div>
         </el-card>
@@ -90,6 +90,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { archiveApi, categoryApi } from '@/api'
+import { useLocale } from '@/composables/useLocale'
+
+const { t } = useLocale()
 
 const stats = ref({
   totalArchives: 0,
