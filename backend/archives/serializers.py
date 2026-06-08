@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Archive, Todo, UserProfile, UserPreference
+from .models import Category, Archive, Todo, UserProfile, UserPreference, ArchiveLog
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -139,3 +139,20 @@ class ArchiveSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'created_by'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+
+class ArchiveLogSerializer(serializers.ModelSerializer):
+    action_type_display = serializers.CharField(source='get_action_type_display', read_only=True)
+
+    class Meta:
+        model = ArchiveLog
+        fields = [
+            'id', 'archive', 'archive_number', 'archive_title',
+            'action_type', 'action_type_display', 'operator',
+            'ip_address', 'change_content', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'archive', 'archive_number', 'archive_title',
+            'action_type', 'action_type_display', 'operator',
+            'ip_address', 'change_content', 'created_at'
+        ]

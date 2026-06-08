@@ -63,6 +63,7 @@ export default {
     dashboard: 'ダッシュボード',
     categories: 'カテゴリ管理',
     archives: 'アーカイブ管理',
+    logs: '操作ログ',
     todos: 'TODO',
     profile: 'プロフィール'
   },
@@ -221,6 +222,25 @@ export default {
     low: '低',
     pending: '未完了',
     completed: '完了'
+  },
+  logs: {
+    title: '操作ログ',
+    id: 'ID',
+    actionType: '操作タイプ',
+    archiveNumber: 'アーカイブ番号',
+    archiveTitle: 'アーカイブタイトル',
+    operator: '操作者',
+    ipAddress: 'IPアドレス',
+    operationTime: '操作時間',
+    changeContent: '変更内容',
+    create: '作成',
+    update: '更新',
+    delete: '削除',
+    view: 'プレビュー',
+    logDetail: 'ログ詳細',
+    beforeChange: '変更前',
+    afterChange: '変更後',
+    noChangeContent: '変更内容なし'
   },
   validation: {
     required: 'この項目は必須です',

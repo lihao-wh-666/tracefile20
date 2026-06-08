@@ -63,6 +63,7 @@ export default {
     dashboard: 'Dashboard',
     categories: 'Categories',
     archives: 'Archives',
+    logs: 'Operation Logs',
     todos: 'Todos',
     profile: 'Profile'
   },
@@ -221,6 +222,25 @@ export default {
     low: 'Low',
     pending: 'Pending',
     completed: 'Completed'
+  },
+  logs: {
+    title: 'Operation Logs',
+    id: 'ID',
+    actionType: 'Action Type',
+    archiveNumber: 'Archive No.',
+    archiveTitle: 'Archive Title',
+    operator: 'Operator',
+    ipAddress: 'IP Address',
+    operationTime: 'Operation Time',
+    changeContent: 'Change Content',
+    create: 'Create',
+    update: 'Update',
+    delete: 'Delete',
+    view: 'View',
+    logDetail: 'Log Detail',
+    beforeChange: 'Before Change',
+    afterChange: 'After Change',
+    noChangeContent: 'No change content'
   },
   validation: {
     required: 'This field is required',

@@ -78,6 +78,10 @@
             <el-icon><Files /></el-icon>
             <span>{{ t('sidebar.archives') }}</span>
           </el-menu-item>
+          <el-menu-item index="/logs">
+            <el-icon><Tickets /></el-icon>
+            <span>{{ t('sidebar.logs') }}</span>
+          </el-menu-item>
           <el-menu-item index="/todos">
             <el-icon><List /></el-icon>
             <span>{{ t('sidebar.todos') }}</span>
@@ -179,6 +183,10 @@
           <el-icon><Files /></el-icon>
           <span>{{ t('sidebar.archives') }}</span>
         </el-menu-item>
+        <el-menu-item index="/logs">
+          <el-icon><Tickets /></el-icon>
+          <span>{{ t('sidebar.logs') }}</span>
+        </el-menu-item>
         <el-menu-item index="/todos">
           <el-icon><List /></el-icon>
           <span>{{ t('sidebar.todos') }}</span>
@@ -196,7 +204,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Menu, Bell, List, UserFilled, SwitchButton, User, Sunny, Moon } from '@element-plus/icons-vue'
+import { Menu, Bell, List, UserFilled, SwitchButton, User, Sunny, Moon, Tickets } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import en from 'element-plus/dist/locale/en.mjs'

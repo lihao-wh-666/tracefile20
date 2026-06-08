@@ -177,3 +177,36 @@ class Archive(models.Model):
 
     def __str__(self):
         return f"{self.archive_number} - {self.title}"
+
+
+class ArchiveLog(models.Model):
+    ACTION_CHOICES = [
+        ('create', '创建'),
+        ('update', '更新'),
+        ('delete', '删除'),
+        ('view', '预览'),
+    ]
+
+    archive = models.ForeignKey(
+        Archive,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='logs',
+        verbose_name='关联案卷'
+    )
+    archive_number = models.CharField(max_length=100, verbose_name='案卷编号')
+    archive_title = models.CharField(max_length=200, blank=True, verbose_name='案卷标题')
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name='操作类型')
+    operator = models.CharField(max_length=100, verbose_name='操作人')
+    ip_address = models.GenericIPAddressField(verbose_name='IP地址')
+    change_content = models.JSONField(null=True, blank=True, verbose_name='变更内容')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='操作时间')
+
+    class Meta:
+        verbose_name = '案卷操作日志'
+        verbose_name_plural = '案卷操作日志'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_action_type_display()} - {self.archive_number} - {self.operator}"

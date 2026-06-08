@@ -97,6 +97,11 @@ export const archiveApi = {
   delete: (id) => api.delete(`/archives/${id}/`)
 }
 
+export const archiveLogApi = {
+  getAll: (params) => api.get('/archive-logs/', { params }),
+  getById: (id) => api.get(`/archive-logs/${id}/`)
+}
+
 export const todoApi = {
   getAll: (params) => api.get('/todos/', { params }),
   getById: (id) => api.get(`/todos/${id}/`),

@@ -9,13 +9,44 @@ from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference
+from .models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference, ArchiveLog
 from .serializers import (
     CategorySerializer, CategorySimpleSerializer, ArchiveSerializer, TodoSerializer,
     UserInfoSerializer, UserUpdateSerializer, PasswordChangeSerializer,
-    UserProfileSerializer, UserPreferenceSerializer
+    UserProfileSerializer, UserPreferenceSerializer, ArchiveLogSerializer
 )
 from django.utils.decorators import method_decorator
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
+    return ip
+
+
+def create_archive_log(request, archive, action_type, old_data=None, new_data=None):
+    operator = request.user.username if request.user.is_authenticated else 'anonymous'
+    ip_address = get_client_ip(request)
+
+    change_content = None
+    if old_data is not None or new_data is not None:
+        change_content = {
+            'old': old_data,
+            'new': new_data
+        }
+
+    ArchiveLog.objects.create(
+        archive=archive,
+        archive_number=archive.archive_number if archive else '',
+        archive_title=archive.title if archive else '',
+        action_type=action_type,
+        operator=operator,
+        ip_address=ip_address,
+        change_content=change_content
+    )
 
 
 @api_view(['GET'])
@@ -212,5 +243,44 @@ class ArchiveViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'archive_number']
     ordering_fields = ['created_at', 'updated_at', 'archive_number']
 
+    def get_old_data(self, instance):
+        return {
+            'title': instance.title,
+            'description': instance.description,
+            'archive_number': instance.archive_number,
+            'category_id': instance.category_id,
+            'status': instance.status
+        }
+
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user.username if self.request.user.is_authenticated else 'system')
+        instance = serializer.save(
+            created_by=self.request.user.username if self.request.user.is_authenticated else 'system'
+        )
+        new_data = self.get_old_data(instance)
+        create_archive_log(self.request, instance, 'create', new_data=new_data)
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        old_data = self.get_old_data(instance)
+        instance = serializer.save()
+        new_data = self.get_old_data(instance)
+        create_archive_log(self.request, instance, 'update', old_data=old_data, new_data=new_data)
+
+    def perform_destroy(self, instance):
+        old_data = self.get_old_data(instance)
+        create_archive_log(self.request, instance, 'delete', old_data=old_data)
+        instance.delete()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        create_archive_log(request, instance, 'view')
+        return super().retrieve(request, *args, **kwargs)
+
+
+class ArchiveLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ArchiveLog.objects.all()
+    serializer_class = ArchiveLogSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['action_type', 'operator', 'archive_number']
+    search_fields = ['archive_number', 'archive_title', 'operator', 'ip_address']
+    ordering_fields = ['created_at', 'action_type', 'operator']

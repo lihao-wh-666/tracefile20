@@ -63,6 +63,7 @@ export default {
     dashboard: '仪表盘',
     categories: '分类管理',
     archives: '案卷管理',
+    logs: '操作日志',
     todos: '待办事项',
     profile: '个人中心'
   },
@@ -221,6 +222,25 @@ export default {
     low: '低',
     pending: '待处理',
     completed: '已完成'
+  },
+  logs: {
+    title: '操作日志',
+    id: 'ID',
+    actionType: '操作类型',
+    archiveNumber: '案卷编号',
+    archiveTitle: '案卷标题',
+    operator: '操作人',
+    ipAddress: 'IP地址',
+    operationTime: '操作时间',
+    changeContent: '变更内容',
+    create: '创建',
+    update: '更新',
+    delete: '删除',
+    view: '预览',
+    logDetail: '日志详情',
+    beforeChange: '变更前',
+    afterChange: '变更后',
+    noChangeContent: '无变更内容'
   },
   validation: {
     required: '此项为必填项',
