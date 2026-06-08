@@ -322,12 +322,40 @@
 
             <el-divider content-position="left">通用设置</el-divider>
 
-            <el-form-item label="语言设置">
-              <el-select v-model="preferencesForm.language" style="width: 200px">
-                <el-option label="简体中文" value="zh-CN" />
-                <el-option label="English" value="en" />
-              </el-select>
-            </el-form-item>
+            <div class="language-section">
+              <div class="section-header">
+                <div class="section-label">{{ t('preferences.languageSettings') }}</div>
+                <div class="current-language-badge">
+                  <el-icon><CircleCheckFilled /></el-icon>
+                  <span>{{ t('preferences.currentLanguage') }}: {{ currentLanguage.nativeName }}</span>
+                </div>
+              </div>
+              <div class="language-cards">
+                <div
+                  v-for="lang in languageList"
+                  :key="lang.value"
+                  class="language-card"
+                  :class="{ active: preferencesForm.language === lang.value, switching: switchingLanguage && pendingLanguage === lang.value }"
+                  @click="handleLanguageChange(lang.value)"
+                >
+                  <div class="lang-flag">{{ lang.flag }}</div>
+                  <div class="lang-info">
+                    <div class="lang-name">{{ lang.nativeName }}</div>
+                    <div class="lang-label">{{ lang.label }}</div>
+                  </div>
+                  <div class="lang-check" v-if="preferencesForm.language === lang.value && !switchingLanguage">
+                    <el-icon :size="20" color="#409eff"><CircleCheckFilled /></el-icon>
+                  </div>
+                  <div class="lang-loading" v-if="switchingLanguage && pendingLanguage === lang.value">
+                    <el-icon class="is-loading" :size="20"><Loading /></el-icon>
+                  </div>
+                </div>
+              </div>
+              <p class="language-tip">
+                <el-icon><InfoFilled /></el-icon>
+                <span>{{ t('preferences.languageSwitching') }}</span>
+              </p>
+            </div>
 
             <el-form-item label="每页条数">
               <el-select v-model="preferencesForm.page_size" style="width: 120px">
@@ -426,10 +454,11 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   UserFilled, Edit, Lock, Warning, CircleCheck,
-  Sunny, Moon, Monitor, Brush, CircleCheckFilled
+  Sunny, Moon, Monitor, Brush, CircleCheckFilled, Loading, InfoFilled
 } from '@element-plus/icons-vue'
 import { authApi, userApi, archiveApi, todoApi } from '@/api'
 import { useTheme } from '@/composables/useTheme'
+import { useLocale } from '@/composables/useLocale'
 
 const activeTab = ref('basic')
 const isEditing = ref(false)
@@ -437,6 +466,14 @@ const saving = ref(false)
 const savingPref = ref(false)
 const changingPassword = ref(false)
 const passwordDialogVisible = ref(false)
+
+const { themeMode, isDark, customTheme, customEnabled, setThemeMode, setCustomTheme, enableCustomTheme, resetCustomTheme: resetThemeToDefault, THEME_MODES } = useTheme()
+
+const { locale, currentLanguage, setLocale, t, switchLanguage, LANGUAGES, LANGUAGE_LIST } = useLocale()
+
+const switchingLanguage = ref(false)
+const pendingLanguage = ref('')
+const languageList = LANGUAGE_LIST
 
 const userInfo = ref(null)
 const stats = reactive({
@@ -506,8 +543,8 @@ const passwordRules = {
 }
 
 const preferencesForm = reactive({
-  theme: 'light',
-  language: 'zh-CN',
+  theme: themeMode.value,
+  language: locale.value,
   email_notification: true,
   sound_effect: false,
   auto_save: true,
@@ -518,8 +555,6 @@ const preferencesForm = reactive({
 const basicFormRef = ref(null)
 const passwordFormRef = ref(null)
 const prefFormRef = ref(null)
-
-const { themeMode, isDark, customTheme, customEnabled, setThemeMode, setCustomTheme, enableCustomTheme, resetCustomTheme: resetThemeToDefault, THEME_MODES } = useTheme()
 
 const customThemeEnabled = ref(customEnabled.value)
 
@@ -636,6 +671,36 @@ const resetCustomTheme = () => {
   ElMessage.success('已恢复默认主题色')
 }
 
+const handleLanguageChange = async (langValue) => {
+  if (switchingLanguage.value || preferencesForm.language === langValue) return
+  
+  switchingLanguage.value = true
+  pendingLanguage.value = langValue
+  
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    const success = await switchLanguage(langValue)
+    if (success) {
+      preferencesForm.language = langValue
+      
+      try {
+        await userApi.updatePreferences({ language: langValue })
+      } catch (e) {
+        console.warn('保存语言偏好到服务器失败:', e)
+      }
+      
+      ElMessage.success(t('preferences.languageChanged'))
+    }
+  } catch (error) {
+    console.error('语言切换失败:', error)
+    ElMessage.error(t('preferences.languageChangeFailed'))
+  } finally {
+    switchingLanguage.value = false
+    pendingLanguage.value = ''
+  }
+}
+
 watch(customThemeEnabled, (enabled) => {
   enableCustomTheme(enabled)
 })
@@ -674,6 +739,9 @@ const loadUserInfo = async () => {
       const savedTheme = localStorage.getItem('app_theme_mode')
       if (!savedTheme && res.data.preferences.theme) {
         setThemeMode(res.data.preferences.theme)
+      }
+      if (res.data.preferences.language && res.data.preferences.language !== locale.value) {
+        setLocale(res.data.preferences.language)
       }
     }
   } catch (error) {
@@ -818,6 +886,8 @@ const handleResetPreferences = () => {
     preferencesForm.auto_save = true
     preferencesForm.page_size = 10
     preferencesForm.sidebar_collapsed = false
+    setThemeMode('light')
+    setLocale('zh-CN')
     ElMessage.success('已重置为默认设置')
   }).catch(() => {})
 }
@@ -1275,6 +1345,109 @@ onMounted(() => {
   margin-left: 10px;
   font-size: 13px;
   color: #909399;
+}
+
+.language-section {
+  margin-bottom: 24px;
+  padding: 0 10px;
+}
+
+.language-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.current-language-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.language-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.language-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid var(--border-primary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--bg-card);
+  position: relative;
+}
+
+.language-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.language-card.active {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.language-card.switching {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.lang-flag {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lang-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.lang-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.lang-check,
+.lang-loading {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.language-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.language-tip .el-icon {
+  color: var(--primary-color);
 }
 
 .password-tip {

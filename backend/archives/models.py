@@ -38,6 +38,7 @@ class UserPreference(models.Model):
     LANGUAGE_CHOICES = [
         ('zh-CN', '简体中文'),
         ('en', 'English'),
+        ('ja', '日本語'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences', verbose_name='用户')

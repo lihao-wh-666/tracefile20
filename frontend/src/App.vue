@@ -1,8 +1,9 @@
 <template>
-  <div v-if="isLoginPage" class="login-wrapper">
-    <router-view />
-  </div>
-  <el-container v-else class="layout-container">
+  <el-config-provider :locale="epLocale">
+    <div v-if="isLoginPage" class="login-wrapper">
+      <router-view />
+    </div>
+    <el-container v-else class="layout-container">
     <el-header class="header">
       <div class="header-content">
         <el-button 
@@ -189,6 +190,7 @@
       </el-menu>
     </el-drawer>
   </el-container>
+  </el-config-provider>
 </template>
 
 <script setup>
@@ -196,10 +198,25 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Menu, Bell, List, UserFilled, SwitchButton, User, Sunny, Moon } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import en from 'element-plus/dist/locale/en.mjs'
+import ja from 'element-plus/dist/locale/ja.mjs'
 import { todoApi, authApi } from '@/api'
 import { useTheme } from '@/composables/useTheme'
+import { useLocale } from '@/composables/useLocale'
 
 const { isDark, toggleTheme } = useTheme()
+const { t, locale } = useLocale()
+
+const elementPlusLocales = {
+  'zh-CN': zhCn,
+  'en': en,
+  'ja': ja
+}
+
+const epLocale = computed(() => {
+  return elementPlusLocales[locale.value] || zhCn
+})
 
 const route = useRoute()
 const router = useRouter()
