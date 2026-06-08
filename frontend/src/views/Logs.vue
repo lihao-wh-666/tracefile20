@@ -9,7 +9,7 @@
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
             <el-form-item :label="t('common.search')" class="form-item">
-              <el-input v-model="searchForm.search" :placeholder="t('common.search') + '..."' clearable class="full-width" />
+              <el-input v-model="searchForm.search" :placeholder="searchPlaceholder" clearable class="full-width" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
@@ -145,6 +145,8 @@ const pagination = reactive({
   pageSize: 10,
   total: 0
 })
+
+const searchPlaceholder = computed(() => `${t('common.search')}...`)
 
 const getActionType = (type) => {
   const typeMap = {

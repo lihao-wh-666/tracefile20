@@ -119,12 +119,21 @@ class Todo(models.Model):
         ('completed', '已完成'),
     ]
 
+    TODO_TYPE_CHOICES = [
+        ('general', '普通'),
+        ('review', '审核'),
+        ('notification', '通知'),
+    ]
+
     title = models.CharField(max_length=200, verbose_name='待办标题')
     description = models.TextField(blank=True, verbose_name='待办描述')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name='优先级')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='状态')
+    todo_type = models.CharField(max_length=20, choices=TODO_TYPE_CHOICES, default='general', verbose_name='待办类型')
     due_date = models.DateTimeField(null=True, blank=True, verbose_name='截止时间')
     is_read = models.BooleanField(default=False, verbose_name='是否已读')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='todos', verbose_name='所属用户')
+    archive = models.ForeignKey('Archive', on_delete=models.CASCADE, null=True, blank=True, related_name='todos', verbose_name='关联案卷')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
@@ -168,7 +177,11 @@ class Archive(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='状态')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
-    created_by = models.CharField(max_length=100, blank=True, verbose_name='创建人')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_archives', verbose_name='创建人')
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_archives', verbose_name='审核人')
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name='审核时间')
+    review_comment = models.TextField(blank=True, verbose_name='审核意见')
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name='提交审核时间')
 
     class Meta:
         verbose_name = '案卷'

@@ -95,15 +95,20 @@ class PasswordChangeSerializer(serializers.Serializer):
 class TodoSerializer(serializers.ModelSerializer):
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    todo_type_display = serializers.CharField(source='get_todo_type_display', read_only=True)
+    archive_title = serializers.CharField(source='archive.title', read_only=True)
+    archive_number = serializers.CharField(source='archive.archive_number', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
         model = Todo
         fields = [
             'id', 'title', 'description', 'priority', 'priority_display',
-            'status', 'status_display', 'due_date', 'is_read',
-            'created_at', 'updated_at'
+            'status', 'status_display', 'todo_type', 'todo_type_display',
+            'due_date', 'is_read', 'user', 'username', 'archive',
+            'archive_title', 'archive_number', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'user']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -130,15 +135,19 @@ class CategorySimpleSerializer(serializers.ModelSerializer):
 class ArchiveSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    reviewed_by_username = serializers.CharField(source='reviewed_by.username', read_only=True)
 
     class Meta:
         model = Archive
         fields = [
             'id', 'title', 'description', 'archive_number',
             'category', 'category_name', 'status', 'status_display',
-            'created_at', 'updated_at', 'created_by'
+            'created_at', 'updated_at', 'created_by', 'created_by_username',
+            'reviewed_by', 'reviewed_by_username', 'reviewed_at', 'review_comment',
+            'submitted_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'created_by', 'reviewed_by', 'reviewed_at', 'submitted_at']
 
 
 class ArchiveLogSerializer(serializers.ModelSerializer):
