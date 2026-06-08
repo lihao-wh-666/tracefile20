@@ -93,11 +93,12 @@ const handleLogin = async () => {
     if (!valid) return
     loading.value = true
     try {
-      const res = await authApi.login({
+      await authApi.login({
         username: loginForm.username,
         password: loginForm.password
       })
-      localStorage.setItem('user', JSON.stringify(res.data))
+      const userInfoRes = await authApi.getUserInfo()
+      localStorage.setItem('user', JSON.stringify(userInfoRes.data))
       ElMessage.success(t('login.loginSuccess'))
       router.push('/dashboard')
     } catch (error) {

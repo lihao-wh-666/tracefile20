@@ -65,12 +65,45 @@
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column :label="t('common.view')" fixed="right" width="150">
+          <el-table-column :label="t('common.operation')" fixed="right" width="280">
             <template #default="scope">
               <div class="action-buttons">
                 <el-button type="primary" link size="small" @click="handleView(scope.row)">{{ t('common.view') }}</el-button>
-                <el-button type="success" link size="small" @click="handleEdit(scope.row)">{{ t('common.edit') }}</el-button>
-                <el-button type="danger" link size="small" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
+                <el-button 
+                  v-if="canEdit(scope.row)" 
+                  type="success" 
+                  link 
+                  size="small" 
+                  @click="handleEdit(scope.row)"
+                >{{ t('common.edit') }}</el-button>
+                <el-button 
+                  v-if="canSubmit(scope.row)" 
+                  type="warning" 
+                  link 
+                  size="small" 
+                  @click="handleSubmitReview(scope.row)"
+                >提交审核</el-button>
+                <el-button 
+                  v-if="canReview(scope.row)" 
+                  type="success" 
+                  link 
+                  size="small" 
+                  @click="handleApprove(scope.row)"
+                >审核通过</el-button>
+                <el-button 
+                  v-if="canReview(scope.row)" 
+                  type="danger" 
+                  link 
+                  size="small" 
+                  @click="handleReject(scope.row)"
+                >审核驳回</el-button>
+                <el-button 
+                  v-if="canDelete(scope.row)" 
+                  type="danger" 
+                  link 
+                  size="small" 
+                  @click="handleDelete(scope.row)"
+                >{{ t('common.delete') }}</el-button>
               </div>
             </template>
           </el-table-column>
@@ -120,15 +153,54 @@
           <el-input v-model="form.description" type="textarea" :rows="4" :disabled="isView" />
         </el-form-item>
         <el-form-item v-if="isView" :label="t('archives.createdBy')">
-          <span>{{ form.created_by }}</span>
+          <span>{{ form.created_by_username || form.created_by }}</span>
         </el-form-item>
         <el-form-item v-if="isView" :label="t('archives.createdAt')">
           <span>{{ formatDate(form.created_at) }}</span>
+        </el-form-item>
+        <el-form-item v-if="isView && form.submitted_at" :label="提交时间">
+          <span>{{ formatDate(form.submitted_at) }}</span>
+        </el-form-item>
+        <el-form-item v-if="isView && form.reviewed_by_username" :label="审核人">
+          <span>{{ form.reviewed_by_username }}</span>
+        </el-form-item>
+        <el-form-item v-if="isView && form.reviewed_at" :label="审核时间">
+          <span>{{ formatDate(form.reviewed_at) }}</span>
+        </el-form-item>
+        <el-form-item v-if="isView && form.review_comment" :label="审核意见">
+          <span>{{ form.review_comment }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.close') }}</el-button>
         <el-button v-if="!isView" type="primary" @click="handleSubmit">{{ t('common.confirm') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="rejectDialogVisible"
+      title="审核驳回"
+      width="500px"
+    >
+      <el-form :model="rejectForm" :rules="rejectRules" ref="rejectFormRef" label-width="80px">
+        <el-form-item label="案卷标题">
+          <span>{{ currentArchive?.title }}</span>
+        </el-form-item>
+        <el-form-item label="案卷编号">
+          <span>{{ currentArchive?.archive_number }}</span>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="comment">
+          <el-input
+            v-model="rejectForm.comment"
+            type="textarea"
+            :rows="4"
+            placeholder="请填写审核意见（必填）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rejectDialogVisible = false">取消</el-button>
+        <el-button type="danger" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
   </div>
@@ -137,7 +209,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { archiveApi, categoryApi } from '@/api'
+import { archiveApi, categoryApi, authApi } from '@/api'
 import { useLocale } from '@/composables/useLocale'
 
 const { t, locale } = useLocale()
@@ -149,6 +221,18 @@ const isEdit = ref(false)
 const isView = ref(false)
 const formRef = ref(null)
 const isMobile = ref(false)
+const userInfo = ref(null)
+
+const rejectDialogVisible = ref(false)
+const rejectFormRef = ref(null)
+const currentArchive = ref(null)
+const rejectForm = reactive({
+  comment: ''
+})
+
+const rejectRules = {
+  comment: [{ required: true, message: '请填写审核意见', trigger: 'blur' }]
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -307,6 +391,12 @@ const handleSubmit = async () => {
     const data = { ...form }
     delete data.created_by
     delete data.created_at
+    delete data.created_by_username
+    delete data.reviewed_by
+    delete data.reviewed_by_username
+    delete data.reviewed_at
+    delete data.review_comment
+    delete data.submitted_at
 
     if (isEdit.value) {
       await archiveApi.update(form.id, data)
@@ -324,9 +414,133 @@ const handleSubmit = async () => {
   }
 }
 
+const loadUserInfo = async () => {
+  try {
+    const res = await authApi.getUserInfo()
+    userInfo.value = res.data
+    localStorage.setItem('user', JSON.stringify(res.data))
+  } catch (error) {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        userInfo.value = JSON.parse(userStr)
+      } catch (e) {
+        userInfo.value = null
+      }
+    }
+  }
+}
+
+const isAdmin = () => {
+  return userInfo.value?.is_staff || false
+}
+
+const isEntryUser = () => {
+  return userInfo.value?.is_archive_entry || false
+}
+
+const isReviewUser = () => {
+  return userInfo.value?.is_archive_review || false
+}
+
+const canEdit = (row) => {
+  if (isAdmin()) return true
+  if (isReviewUser()) return false
+  if (isEntryUser()) {
+    return row.status === 'draft' || row.status === 'rejected'
+  }
+  return false
+}
+
+const canSubmit = (row) => {
+  if (isAdmin()) return true
+  if (isEntryUser()) {
+    return row.status === 'draft' || row.status === 'rejected'
+  }
+  return false
+}
+
+const canReview = (row) => {
+  if (isAdmin()) return true
+  if (isReviewUser()) {
+    return row.status === 'pending'
+  }
+  return false
+}
+
+const canDelete = (row) => {
+  return isAdmin()
+}
+
+const handleSubmitReview = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要提交案卷「${row.title}」进行审核吗？`,
+      '提交审核',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await archiveApi.submitForReview(row.id)
+    ElMessage.success('提交审核成功')
+    loadArchives()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('提交审核失败:', error)
+      ElMessage.error('提交审核失败')
+    }
+  }
+}
+
+const handleApprove = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要通过案卷「${row.title}」的审核吗？`,
+      '审核通过',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'success'
+      }
+    )
+    await archiveApi.approve(row.id, { comment: '' })
+    ElMessage.success('审核通过成功')
+    loadArchives()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('审核通过失败:', error)
+      ElMessage.error(error?.response?.data?.detail || '审核通过失败')
+    }
+  }
+}
+
+const handleReject = (row) => {
+  currentArchive.value = row
+  rejectForm.comment = ''
+  rejectDialogVisible.value = true
+}
+
+const confirmReject = async () => {
+  try {
+    await rejectFormRef.value.validate()
+    await archiveApi.reject(currentArchive.value.id, { comment: rejectForm.comment })
+    ElMessage.success('审核驳回成功')
+    rejectDialogVisible.value = false
+    loadArchives()
+  } catch (error) {
+    if (error !== false) {
+      console.error('审核驳回失败:', error)
+      ElMessage.error(error?.response?.data?.detail || '审核驳回失败')
+    }
+  }
+}
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  loadUserInfo()
   loadCategories()
   loadArchives()
 })

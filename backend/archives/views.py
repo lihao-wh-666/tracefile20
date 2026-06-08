@@ -21,6 +21,8 @@ from .permissions import (
     ARCHIVE_ENTRY_GROUP_NAME, ARCHIVE_REVIEW_GROUP_NAME,
     setup_archive_groups
 )
+from .pagination import StandardResultsSetPagination
+from .export_service import export_archives
 from django.utils.decorators import method_decorator
 
 
@@ -248,6 +250,8 @@ class TodoViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'due_date', 'priority']
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+    ordering = ['-created_at']
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -288,6 +292,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['created_at', 'name']
+    pagination_class = StandardResultsSetPagination
+    ordering = ['name']
 
     @action(detail=False, methods=['get'])
     def tree(self, request):
@@ -310,6 +316,8 @@ class ArchiveViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'archive_number']
     ordering_fields = ['created_at', 'updated_at', 'archive_number']
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+    ordering = ['-created_at']
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -482,6 +490,50 @@ class ArchiveViewSet(viewsets.ModelViewSet):
 
         return Response(ArchiveSerializer(archive).data)
 
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def export(self, request):
+        archive_ids = request.data.get('ids', [])
+        export_format = request.data.get('format', 'xlsx')
+
+        if not archive_ids:
+            return Response(
+                {'detail': '请选择要导出的案卷'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if isinstance(archive_ids, str):
+            archive_ids = [aid.strip() for aid in archive_ids.split(',') if aid.strip()]
+
+        valid_formats = ['pdf', 'xlsx', 'excel', 'word', 'docx', 'csv']
+        if export_format.lower() not in valid_formats:
+            return Response(
+                {'detail': f'不支持的导出格式：{export_format}，支持的格式：{", ".join(valid_formats)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        queryset = self.get_queryset()
+        archives = queryset.filter(id__in=archive_ids).order_by('-created_at')
+
+        if not archives.exists():
+            return Response(
+                {'detail': '未找到可导出的案卷'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            response = export_archives(archives, export_format)
+            return response
+        except ValueError as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'导出失败：{str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class ArchiveLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ArchiveLog.objects.all()
@@ -490,3 +542,6 @@ class ArchiveLogViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['action_type', 'operator', 'archive_number']
     search_fields = ['archive_number', 'archive_title', 'operator', 'ip_address']
     ordering_fields = ['created_at', 'action_type', 'operator']
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+    ordering = ['-created_at']

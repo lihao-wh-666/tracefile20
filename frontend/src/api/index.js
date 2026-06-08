@@ -94,7 +94,10 @@ export const archiveApi = {
   getById: (id) => api.get(`/archives/${id}/`),
   create: (data) => api.post('/archives/', data),
   update: (id, data) => api.put(`/archives/${id}/`, data),
-  delete: (id) => api.delete(`/archives/${id}/`)
+  delete: (id) => api.delete(`/archives/${id}/`),
+  submitForReview: (id) => api.post(`/archives/${id}/submit_for_review/`),
+  approve: (id, data) => api.post(`/archives/${id}/approve/`, data),
+  reject: (id, data) => api.post(`/archives/${id}/reject/`, data)
 }
 
 export const archiveLogApi = {

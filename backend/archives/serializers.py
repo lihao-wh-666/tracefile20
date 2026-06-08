@@ -33,14 +33,27 @@ class UserPreferenceSerializer(serializers.ModelSerializer):
 class UserInfoSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     preferences = UserPreferenceSerializer(read_only=True)
+    groups = serializers.SerializerMethodField()
+    is_archive_entry = serializers.SerializerMethodField()
+    is_archive_review = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'is_staff', 'is_active', 'date_joined', 'profile', 'preferences'
+            'is_staff', 'is_active', 'date_joined', 'profile', 'preferences',
+            'groups', 'is_archive_entry', 'is_archive_review'
         ]
         read_only_fields = ['username', 'is_staff', 'is_active', 'date_joined']
+
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
+
+    def get_is_archive_entry(self, obj):
+        return obj.groups.filter(name='案卷管理录入组').exists()
+
+    def get_is_archive_review(self, obj):
+        return obj.groups.filter(name='案卷管理审核组').exists()
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

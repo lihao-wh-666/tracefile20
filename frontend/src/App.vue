@@ -238,13 +238,19 @@ const notificationList = ref([])
 const userInfo = ref(null)
 let refreshInterval = null
 
-const loadUserInfo = () => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    try {
-      userInfo.value = JSON.parse(userStr)
-    } catch (e) {
-      userInfo.value = null
+const loadUserInfo = async () => {
+  try {
+    const res = await authApi.getUserInfo()
+    userInfo.value = res.data
+    localStorage.setItem('user', JSON.stringify(res.data))
+  } catch (error) {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        userInfo.value = JSON.parse(userStr)
+      } catch (e) {
+        userInfo.value = null
+      }
     }
   }
 }
