@@ -358,11 +358,10 @@ class ArchiveViewSet(viewsets.ModelViewSet):
 
         old_data = self.get_old_data(instance)
 
-        update_data = dict(serializer.validated_data)
-        if is_archive_entry_user(user) and 'status' in update_data:
-            del update_data['status']
+        if is_archive_entry_user(user) and 'status' in serializer.validated_data:
+            serializer.validated_data.pop('status', None)
 
-        instance = serializer.save(**update_data)
+        instance = serializer.save()
         new_data = self.get_old_data(instance)
         create_archive_log(self.request, instance, 'update', old_data=old_data, new_data=new_data)
 

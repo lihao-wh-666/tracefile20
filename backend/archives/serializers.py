@@ -126,7 +126,7 @@ class TodoSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
-    parent_name = serializers.CharField(source='parent.name', read_only=True)
+    parent_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -138,6 +138,9 @@ class CategorySerializer(serializers.ModelSerializer):
             return CategorySerializer(obj.children.all(), many=True).data
         return []
 
+    def get_parent_name(self, obj):
+        return obj.parent.name if obj.parent else None
+
 
 class CategorySimpleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -148,8 +151,8 @@ class CategorySimpleSerializer(serializers.ModelSerializer):
 class ArchiveSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    reviewed_by_username = serializers.CharField(source='reviewed_by.username', read_only=True)
+    created_by_username = serializers.SerializerMethodField()
+    reviewed_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Archive
@@ -161,6 +164,12 @@ class ArchiveSerializer(serializers.ModelSerializer):
             'submitted_at'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'reviewed_by', 'reviewed_at', 'submitted_at']
+
+    def get_created_by_username(self, obj):
+        return obj.created_by.username if obj.created_by else None
+
+    def get_reviewed_by_username(self, obj):
+        return obj.reviewed_by.username if obj.reviewed_by else None
 
 
 class ArchiveLogSerializer(serializers.ModelSerializer):

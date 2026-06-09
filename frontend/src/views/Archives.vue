@@ -3,7 +3,13 @@
     <div class="page-header">
       <h2 class="page-title">{{ t('archives.title') }}</h2>
       <div class="header-actions">
-        <el-dropdown @command="handleExportCommand" class="export-dropdown" :disabled="selectedIds.length === 0">
+        <el-dropdown
+          @command="handleExportCommand"
+          class="export-dropdown"
+          :disabled="selectedIds.length === 0"
+          trigger="click"
+          placement="bottom-end"
+        >
           <el-button type="success">
             <el-icon><Download /></el-icon>
             <span class="btn-text">导出{{ selectedIds.length > 0 ? `(${selectedIds.length})` : '' }}</span>
