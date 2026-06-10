@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Archive, Todo, UserProfile, UserPreference, ArchiveLog
+from .models import Category, Archive, Todo, UserProfile, UserPreference, ArchiveLog, ArchiveVersion, RejectRecord
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -187,3 +187,57 @@ class ArchiveLogSerializer(serializers.ModelSerializer):
             'action_type', 'action_type_display', 'operator',
             'ip_address', 'change_content', 'created_at'
         ]
+
+
+class ArchiveVersionSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    created_by_username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ArchiveVersion
+        fields = [
+            'id', 'archive', 'version_number', 'title', 'description',
+            'archive_number', 'category_id', 'category_name',
+            'status', 'status_display', 'snapshot_data',
+            'created_by', 'created_by_username', 'change_reason', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'archive', 'version_number', 'title', 'description',
+            'archive_number', 'category_id', 'category_name',
+            'status', 'status_display', 'snapshot_data',
+            'created_by', 'created_by_username', 'change_reason', 'created_at'
+        ]
+
+    def get_created_by_username(self, obj):
+        return obj.created_by.username if obj.created_by else None
+
+
+class RejectRecordSerializer(serializers.ModelSerializer):
+    rejected_by_username = serializers.SerializerMethodField()
+    version_number = serializers.IntegerField(source='reject_version.version_number', read_only=True)
+
+    class Meta:
+        model = RejectRecord
+        fields = [
+            'id', 'archive', 'reject_version', 'version_number',
+            'reject_comment', 'rejected_by', 'rejected_by_username',
+            'rejected_at', 'data_before', 'data_after', 'field_changes',
+            'is_resubmitted', 'resubmitted_at'
+        ]
+        read_only_fields = [
+            'id', 'archive', 'reject_version', 'version_number',
+            'reject_comment', 'rejected_by', 'rejected_by_username',
+            'rejected_at', 'data_before', 'data_after', 'field_changes',
+            'is_resubmitted', 'resubmitted_at'
+        ]
+
+    def get_rejected_by_username(self, obj):
+        return obj.rejected_by.username if obj.rejected_by else None
+
+
+class ArchiveRejectSerializer(serializers.Serializer):
+    comment = serializers.CharField(required=True, write_only=True)
+
+
+class ArchiveRollbackSerializer(serializers.Serializer):
+    version_id = serializers.IntegerField(required=True, write_only=True)

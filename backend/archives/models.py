@@ -223,3 +223,176 @@ class ArchiveLog(models.Model):
 
     def __str__(self):
         return f"{self.get_action_type_display()} - {self.archive_number} - {self.operator}"
+
+
+class ArchiveVersion(models.Model):
+    archive = models.ForeignKey(
+        Archive,
+        on_delete=models.CASCADE,
+        related_name='versions',
+        verbose_name='关联案卷'
+    )
+    version_number = models.IntegerField(verbose_name='版本号')
+    title = models.CharField(max_length=200, verbose_name='案卷标题')
+    description = models.TextField(verbose_name='案卷描述')
+    archive_number = models.CharField(max_length=100, verbose_name='案卷编号')
+    category_id = models.IntegerField(verbose_name='分类ID')
+    category_name = models.CharField(max_length=100, verbose_name='分类名称')
+    status = models.CharField(max_length=20, choices=Archive.STATUS_CHOICES, verbose_name='状态')
+    snapshot_data = models.JSONField(verbose_name='快照数据')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_archive_versions',
+        verbose_name='创建人'
+    )
+    change_reason = models.TextField(blank=True, verbose_name='修改原因')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        verbose_name = '案卷版本快照'
+        verbose_name_plural = '案卷版本快照'
+        ordering = ['archive', '-version_number']
+        unique_together = ['archive', 'version_number']
+
+    def __str__(self):
+        return f"{self.archive_number} - 版本{self.version_number}"
+
+    @classmethod
+    def create_snapshot(cls, archive, created_by, change_reason=''):
+        last_version = cls.objects.filter(archive=archive).order_by('-version_number').first()
+        version_number = last_version.version_number + 1 if last_version else 1
+
+        snapshot_data = {
+            'title': archive.title,
+            'description': archive.description,
+            'archive_number': archive.archive_number,
+            'category_id': archive.category_id,
+            'category_name': archive.category.name if archive.category else '',
+            'status': archive.status,
+            'created_by_id': archive.created_by_id,
+            'reviewed_by_id': archive.reviewed_by_id,
+            'reviewed_at': archive.reviewed_at.isoformat() if archive.reviewed_at else None,
+            'review_comment': archive.review_comment,
+            'submitted_at': archive.submitted_at.isoformat() if archive.submitted_at else None,
+        }
+
+        return cls.objects.create(
+            archive=archive,
+            version_number=version_number,
+            title=archive.title,
+            description=archive.description,
+            archive_number=archive.archive_number,
+            category_id=archive.category_id,
+            category_name=archive.category.name if archive.category else '',
+            status=archive.status,
+            snapshot_data=snapshot_data,
+            created_by=created_by,
+            change_reason=change_reason
+        )
+
+    def restore(self, restored_by):
+        from .models import Archive
+        archive = self.archive
+
+        old_data = {
+            'title': archive.title,
+            'description': archive.description,
+            'archive_number': archive.archive_number,
+            'category_id': archive.category_id,
+            'status': archive.status
+        }
+
+        archive.title = self.title
+        archive.description = self.description
+        archive.archive_number = self.archive_number
+        archive.status = 'draft'
+        archive.reviewed_by = None
+        archive.reviewed_at = None
+        archive.review_comment = ''
+        archive.submitted_at = None
+        archive.save()
+
+        new_data = {
+            'title': archive.title,
+            'description': archive.description,
+            'archive_number': archive.archive_number,
+            'category_id': archive.category_id,
+            'status': archive.status
+        }
+
+        self.create_snapshot(archive, restored_by, f'回滚到版本{self.version_number}')
+
+        return archive, old_data, new_data
+
+
+class RejectRecord(models.Model):
+    archive = models.ForeignKey(
+        Archive,
+        on_delete=models.CASCADE,
+        related_name='reject_records',
+        verbose_name='关联案卷'
+    )
+    reject_version = models.ForeignKey(
+        ArchiveVersion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reject_records',
+        verbose_name='驳回时版本'
+    )
+    reject_comment = models.TextField(verbose_name='驳回意见')
+    rejected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rejected_records',
+        verbose_name='驳回人'
+    )
+    rejected_at = models.DateTimeField(auto_now_add=True, verbose_name='驳回时间')
+    data_before = models.JSONField(verbose_name='修改前数据')
+    data_after = models.JSONField(verbose_name='修改后数据')
+    field_changes = models.JSONField(verbose_name='字段变更详情')
+    is_resubmitted = models.BooleanField(default=False, verbose_name='是否已重新提交')
+    resubmitted_at = models.DateTimeField(null=True, blank=True, verbose_name='重新提交时间')
+
+    class Meta:
+        verbose_name = '驳回记录'
+        verbose_name_plural = '驳回记录'
+        ordering = ['-rejected_at']
+
+    def __str__(self):
+        return f"{self.archive.archive_number} - 驳回记录"
+
+    @classmethod
+    def create_reject_record(cls, archive, rejected_by, reject_comment, old_data, new_data):
+        field_changes = {}
+        for key in set(old_data.keys()) | set(new_data.keys()):
+            old_val = old_data.get(key)
+            new_val = new_data.get(key)
+            if old_val != new_val:
+                field_changes[key] = {
+                    'old': old_val,
+                    'new': new_val
+                }
+
+        current_version = ArchiveVersion.objects.filter(archive=archive).order_by('-version_number').first()
+
+        return cls.objects.create(
+            archive=archive,
+            reject_version=current_version,
+            reject_comment=reject_comment,
+            rejected_by=rejected_by,
+            data_before=old_data,
+            data_after=new_data,
+            field_changes=field_changes
+        )
+
+    def mark_resubmitted(self):
+        from django.utils import timezone
+        self.is_resubmitted = True
+        self.resubmitted_at = timezone.now()
+        self.save()

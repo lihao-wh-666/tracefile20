@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryViewSet, ArchiveViewSet, TodoViewSet, ArchiveLogViewSet,
+    ArchiveVersionViewSet, RejectRecordViewSet,
     login_view, logout_view, user_info_view, csrf_token_view,
     update_user_info, change_password, user_preferences_view, user_profile_view
 )
@@ -11,6 +12,8 @@ router.register(r'categories', CategoryViewSet)
 router.register(r'archives', ArchiveViewSet)
 router.register(r'todos', TodoViewSet)
 router.register(r'archive-logs', ArchiveLogViewSet)
+router.register(r'archive-versions', ArchiveVersionViewSet)
+router.register(r'reject-records', RejectRecordViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

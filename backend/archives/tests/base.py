@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
-from archives.models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference, ArchiveLog
+from archives.models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference, ArchiveLog, ArchiveVersion, RejectRecord
 from archives.permissions import (
     setup_archive_groups, is_archive_entry_user, is_archive_review_user,
     ARCHIVE_ENTRY_GROUP_NAME, ARCHIVE_REVIEW_GROUP_NAME
@@ -72,3 +72,6 @@ class BaseTestSetup(TestCase):
             status='pending',
             created_by=cls.entry_user
         )
+
+        ArchiveVersion.create_snapshot(cls.archive1, cls.entry_user, '创建案卷')
+        ArchiveVersion.create_snapshot(cls.archive2, cls.entry_user, '创建案卷')
