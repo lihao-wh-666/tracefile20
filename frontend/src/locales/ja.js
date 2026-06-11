@@ -28,7 +28,10 @@ export default {
     more: 'もっと見る',
     all: 'すべて',
     default: 'デフォルト',
-    unknown: '不明'
+    unknown: '不明',
+    select: '選択',
+    input: '入力',
+    operation: '操作'
   },
   header: {
     title: 'アーカイブ管理システム',

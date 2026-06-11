@@ -28,7 +28,10 @@ export default {
     more: 'More',
     all: 'All',
     default: 'Default',
-    unknown: 'Unknown'
+    unknown: 'Unknown',
+    select: 'Select',
+    input: 'Enter',
+    operation: 'Operation'
   },
   header: {
     title: 'Archive Management System',

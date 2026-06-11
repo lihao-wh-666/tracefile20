@@ -28,7 +28,10 @@ export default {
     more: '更多',
     all: '全部',
     default: '默认',
-    unknown: '未知'
+    unknown: '未知',
+    select: '请选择',
+    input: '请输入',
+    operation: '操作'
   },
   header: {
     title: '案卷管理系统',
