@@ -98,7 +98,21 @@ export const archiveApi = {
   submitForReview: (id) => api.post(`/archives/${id}/submit_for_review/`),
   approve: (id, data) => api.post(`/archives/${id}/approve/`, data),
   reject: (id, data) => api.post(`/archives/${id}/reject/`, data),
-  export: (data) => api.post('/archives/export/', data, { responseType: 'blob' })
+  export: (data) => api.post('/archives/export/', data, { responseType: 'blob' }),
+  getVersions: (id) => api.get(`/archives/${id}/versions/`),
+  getVersionDetail: (id, versionId) => api.get(`/archives/${id}/versions/${versionId}/`),
+  rollback: (id, data) => api.post(`/archives/${id}/rollback/`, data),
+  getRejectRecords: (id) => api.get(`/archives/${id}/reject_records/`)
+}
+
+export const archiveVersionApi = {
+  getAll: (params) => api.get('/archive-versions/', { params }),
+  getById: (id) => api.get(`/archive-versions/${id}/`)
+}
+
+export const rejectRecordApi = {
+  getAll: (params) => api.get('/reject-records/', { params }),
+  getById: (id) => api.get(`/reject-records/${id}/`)
 }
 
 export const archiveLogApi = {
