@@ -15,6 +15,18 @@ def create_test_data():
     entry_group, _ = Group.objects.get_or_create(name='档案录入员')
     review_group, _ = Group.objects.get_or_create(name='档案审核员')
 
+    admin_user, _ = User.objects.get_or_create(
+        username='admin',
+        defaults={
+            'email': 'admin@example.com',
+            'is_staff': True,
+            'is_superuser': True
+        }
+    )
+    admin_user.set_password('admin123')
+    admin_user.save()
+    admin_user.groups.add(entry_group, review_group)
+
     entry_user, _ = User.objects.get_or_create(
         username='entry_test',
         defaults={
@@ -37,21 +49,22 @@ def create_test_data():
     review_user.save()
     review_user.groups.add(review_group)
 
-    admin_user, _ = User.objects.get_or_create(
+    admin_test_user, _ = User.objects.get_or_create(
         username='admin_test',
         defaults={
-            'email': 'admin@test.com',
+            'email': 'admin_test@test.com',
             'is_staff': True,
             'is_superuser': True
         }
     )
-    admin_user.set_password('test123456')
-    admin_user.save()
+    admin_test_user.set_password('test123456')
+    admin_test_user.save()
 
     print('✓ 测试用户创建完成:')
+    print(f'  - 管理员: admin / admin123 (默认账号)')
     print(f'  - 录入员: entry_test / test123456')
     print(f'  - 审核员: review_test / test123456')
-    print(f'  - 管理员: admin_test / test123456')
+    print(f'  - 管理员(测试): admin_test / test123456')
 
     cat1, _ = Category.objects.get_or_create(
         name='人事档案',
