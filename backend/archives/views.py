@@ -2,13 +2,12 @@ from rest_framework import viewsets, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth.models import Group
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Archive, Todo, LoginAttempt, UserProfile, UserPreference, ArchiveLog, ArchiveVersion, RejectRecord
 from .serializers import (
@@ -20,96 +19,22 @@ from .serializers import (
 )
 from .permissions import (
     is_archive_entry_user, is_archive_review_user,
-    ARCHIVE_ENTRY_GROUP_NAME, ARCHIVE_REVIEW_GROUP_NAME,
-    setup_archive_groups
+    ARCHIVE_REVIEW_GROUP_NAME, setup_archive_groups
 )
 from .pagination import StandardResultsSetPagination
 from .export_service import export_archives
-from django.utils.decorators import method_decorator
-
-
-def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
-    return ip
-
-
-def create_archive_log(request, archive, action_type, old_data=None, new_data=None):
-    operator = request.user.username if request.user.is_authenticated else 'anonymous'
-    ip_address = get_client_ip(request)
-
-    change_content = None
-    if old_data is not None or new_data is not None:
-        change_content = {
-            'old': old_data,
-            'new': new_data
-        }
-
-    ArchiveLog.objects.create(
-        archive=archive,
-        archive_number=archive.archive_number if archive else '',
-        archive_title=archive.title if archive else '',
-        action_type=action_type,
-        operator=operator,
-        ip_address=ip_address,
-        change_content=change_content
-    )
-
-
-def create_review_todos_for_archive(archive, created_by_username=''):
-    try:
-        review_group = Group.objects.get(name=ARCHIVE_REVIEW_GROUP_NAME)
-    except Group.DoesNotExist:
-        return
-
-    users = review_group.user_set.all()
-    for user in users:
-        Todo.objects.create(
-            title=f'案卷待审核：{archive.archive_number}',
-            description=f'案卷「{archive.title}」已提交审核，请及时处理。\n提交人：{created_by_username}',
-            priority='high',
-            status='pending',
-            todo_type='review',
-            is_read=False,
-            user=user,
-            archive=archive
-        )
-
-
-def create_notification_for_creator(archive, action, comment=''):
-    if not archive.created_by:
-        return
-
-    action_text = {
-        'approved': '审核通过',
-        'rejected': '审核驳回',
-    }.get(action, '审核完成')
-
-    description = f'您的案卷「{archive.title}」已{action_text}。'
-    if comment:
-        description += f'\n审核意见：{comment}'
-
-    Todo.objects.create(
-        title=f'案卷{action_text}：{archive.archive_number}',
-        description=description,
-        priority='medium',
-        status='pending',
-        todo_type='notification',
-        is_read=False,
-        user=archive.created_by,
-        archive=archive
-    )
+from .mixins.view_mixins import (
+    ArchivePermissionMixin, ArchiveOperationMixin,
+    get_client_ip, create_archive_log, create_review_todos_for_archive,
+    create_notification_for_creator
+)
 
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 @ensure_csrf_cookie
 def csrf_token_view(request):
-    csrf_token = get_token(request)
-    return Response({'csrfToken': csrf_token})
+    return Response({'csrfToken': get_token(request)})
 
 
 @api_view(['POST'])
@@ -146,25 +71,26 @@ def login_view(request):
             'email': user.email,
             'is_staff': user.is_staff
         })
-    else:
-        attempt = LoginAttempt.record_failed_attempt(username)
-        remaining_attempts = LoginAttempt.MAX_ATTEMPTS - attempt.failed_attempts
-        if remaining_attempts > 0:
-            return Response(
-                {
-                    'detail': f'用户名或密码错误，还有 {remaining_attempts} 次尝试机会',
-                    'remaining_attempts': remaining_attempts
-                },
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        else:
-            return Response(
-                {
-                    'detail': f'登录失败次数过多，账号已被锁定 {LoginAttempt.LOCK_DURATION_MINUTES} 分钟',
-                    'lock_until': attempt.lock_until
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
+
+    attempt = LoginAttempt.record_failed_attempt(username)
+    remaining_attempts = LoginAttempt.MAX_ATTEMPTS - attempt.failed_attempts
+
+    if remaining_attempts > 0:
+        return Response(
+            {
+                'detail': f'用户名或密码错误，还有 {remaining_attempts} 次尝试机会',
+                'remaining_attempts': remaining_attempts
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    return Response(
+        {
+            'detail': f'登录失败次数过多，账号已被锁定 {LoginAttempt.LOCK_DURATION_MINUTES} 分钟',
+            'lock_until': attempt.lock_until
+        },
+        status=status.HTTP_403_FORBIDDEN
+    )
 
 
 @api_view(['POST'])
@@ -180,8 +106,7 @@ def user_info_view(request):
     user = request.user
     UserProfile.objects.get_or_create(user=user)
     UserPreference.objects.get_or_create(user=user)
-    serializer = UserInfoSerializer(user)
-    return Response(serializer.data)
+    return Response(UserInfoSerializer(user).data)
 
 
 @api_view(['PUT', 'PATCH'])
@@ -191,11 +116,9 @@ def update_user_info(request):
     serializer = UserUpdateSerializer(user, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
-        user = request.user
         UserProfile.objects.get_or_create(user=user)
         UserPreference.objects.get_or_create(user=user)
-        result_serializer = UserInfoSerializer(user)
-        return Response(result_serializer.data)
+        return Response(UserInfoSerializer(user).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -217,8 +140,7 @@ def user_preferences_view(request):
     preferences, created = UserPreference.objects.get_or_create(user=user)
 
     if request.method == 'GET':
-        serializer = UserPreferenceSerializer(preferences)
-        return Response(serializer.data)
+        return Response(UserPreferenceSerializer(preferences).data)
 
     serializer = UserPreferenceSerializer(preferences, data=request.data, partial=True)
     if serializer.is_valid():
@@ -234,8 +156,7 @@ def user_profile_view(request):
     profile, created = UserProfile.objects.get_or_create(user=user)
 
     if request.method == 'GET':
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+        return Response(UserProfileSerializer(profile).data)
 
     serializer = UserProfileSerializer(profile, data=request.data, partial=True)
     if serializer.is_valid():
@@ -258,33 +179,26 @@ class TodoViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
-        if user.is_staff:
-            return queryset
-        return queryset.filter(user=user)
+        return queryset if user.is_staff else queryset.filter(user=user)
+
+    def _get_user_queryset(self):
+        queryset = Todo.objects.filter(is_read=False, status='pending')
+        user = self.request.user
+        return queryset if user.is_staff else queryset.filter(user=user)
 
     @action(detail=False, methods=['get'])
     def unread_count(self, request):
-        user = request.user
-        queryset = Todo.objects.filter(is_read=False, status='pending')
-        if not user.is_staff:
-            queryset = queryset.filter(user=user)
-        count = queryset.count()
-        return Response({'count': count})
+        return Response({'count': self._get_user_queryset().count()})
 
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):
-        user = request.user
-        queryset = Todo.objects.filter(is_read=False)
-        if not user.is_staff:
-            queryset = queryset.filter(user=user)
-        queryset.update(is_read=True)
+        self._get_user_queryset().update(is_read=True)
         return Response({'message': '已全部标记为已读'})
 
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
         todo = self.get_object()
-        todo.status = 'completed' if todo.status == 'pending' else 'pending'
-        todo.save()
+        todo.toggle_status()
         return Response(TodoSerializer(todo).data)
 
 
@@ -300,17 +214,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def tree(self, request):
         root_categories = Category.objects.filter(parent=None)
-        serializer = CategorySerializer(root_categories, many=True)
-        return Response(serializer.data)
+        return Response(CategorySerializer(root_categories, many=True).data)
 
     @action(detail=False, methods=['get'])
     def simple(self, request):
-        categories = Category.objects.all()
-        serializer = CategorySimpleSerializer(categories, many=True)
-        return Response(serializer.data)
+        return Response(CategorySimpleSerializer(Category.objects.all(), many=True).data)
 
 
-class ArchiveViewSet(viewsets.ModelViewSet):
+class ArchiveViewSet(viewsets.ModelViewSet, ArchivePermissionMixin, ArchiveOperationMixin):
     queryset = Archive.objects.all()
     serializer_class = ArchiveSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -324,22 +235,15 @@ class ArchiveViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
-        if user.is_staff:
-            return queryset
-        if is_archive_review_user(user):
+        if user.is_staff or is_archive_review_user(user):
             return queryset
         if is_archive_entry_user(user):
             return queryset.filter(created_by=user)
         return queryset.none()
 
-    def get_old_data(self, instance):
-        return {
-            'title': instance.title,
-            'description': instance.description,
-            'archive_number': instance.archive_number,
-            'category_id': instance.category_id,
-            'status': instance.status
-        }
+    def _check_edit_permission(self, instance, user):
+        if is_archive_entry_user(user) and instance.status in ['approved', 'pending']:
+            raise PermissionDenied('案卷已提交审核或已通过，无法编辑')
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -347,34 +251,26 @@ class ArchiveViewSet(viewsets.ModelViewSet):
             created_by=user if user.is_authenticated else None,
             status='draft'
         )
-        new_data = self.get_old_data(instance)
-        create_archive_log(self.request, instance, 'create', new_data=new_data)
-        ArchiveVersion.create_snapshot(instance, user if user.is_authenticated else None, '创建案卷')
+        self.create_snapshot_and_log(self.request, instance, 'create', '创建案卷')
 
     def perform_update(self, serializer):
         instance = self.get_object()
         user = self.request.user
 
-        if is_archive_entry_user(user) and instance.status in ['approved', 'pending']:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('案卷已提交审核或已通过，无法编辑')
-
+        self._check_edit_permission(instance, user)
         old_data = self.get_old_data(instance)
 
         if is_archive_entry_user(user) and 'status' in serializer.validated_data:
             serializer.validated_data.pop('status', None)
 
         change_reason = self.request.data.get('change_reason', '更新案卷')
-
         instance = serializer.save()
-        new_data = self.get_old_data(instance)
-        create_archive_log(self.request, instance, 'update', old_data=old_data, new_data=new_data)
-        ArchiveVersion.create_snapshot(instance, user if user.is_authenticated else None, change_reason)
+
+        self.create_snapshot_and_log(self.request, instance, 'update', change_reason, old_data=old_data)
 
     def perform_destroy(self, instance):
         user = self.request.user
         if is_archive_entry_user(user):
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('您没有删除案卷的权限')
 
         old_data = self.get_old_data(instance)
@@ -391,42 +287,21 @@ class ArchiveViewSet(viewsets.ModelViewSet):
         archive = self.get_object()
         user = request.user
 
-        if not is_archive_entry_user(user) and not user.is_staff:
-            return Response(
-                {'detail': '您没有提交审核的权限'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if is_archive_entry_user(user) and archive.created_by != user:
-            return Response(
-                {'detail': '只能提交自己创建的案卷'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if archive.status not in ['draft', 'rejected']:
-            return Response(
-                {'detail': '当前状态无法提交审核'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        self.check_archive_permission(archive, user, 'submit')
+        self.check_archive_status(archive, ['draft', 'rejected'], '当前状态无法提交审核')
 
         old_data = self.get_old_data(archive)
-        archive.status = 'pending'
-        archive.submitted_at = timezone.now()
-        archive.reviewed_by = None
-        archive.reviewed_at = None
-        archive.review_comment = ''
-        archive.save()
-
-        new_data = self.get_old_data(archive)
-        create_archive_log(request, archive, 'update', old_data=old_data, new_data=new_data)
-        ArchiveVersion.create_snapshot(archive, user, '提交审核')
-
-        RejectRecord.objects.filter(archive=archive, is_resubmitted=False).update(
-            is_resubmitted=True,
-            resubmitted_at=timezone.now()
+        archive.transition_status(
+            'submit',
+            submitted_at=timezone.now(),
+            reviewed_by=None,
+            reviewed_at=None,
+            review_comment=''
         )
 
-        create_review_todos_for_archive(archive, user.username)
+        self.create_snapshot_and_log(request, archive, 'update', '提交审核', old_data=old_data)
+        self.mark_resubmitted_records(archive)
+        create_review_todos_for_archive(archive, ARCHIVE_REVIEW_GROUP_NAME, user.username)
 
         return Response(ArchiveSerializer(archive).data)
 
@@ -435,31 +310,21 @@ class ArchiveViewSet(viewsets.ModelViewSet):
         archive = self.get_object()
         user = request.user
 
-        if not is_archive_review_user(user) and not user.is_staff:
-            return Response(
-                {'detail': '您没有审核权限'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if archive.status != 'pending':
-            return Response(
-                {'detail': '只有待审核状态的案卷才能通过'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        self.check_archive_permission(archive, user, 'review')
+        self.check_archive_status(archive, ['pending'], '只有待审核状态的案卷才能通过')
 
         comment = request.data.get('comment', '')
-
         old_data = self.get_old_data(archive)
-        archive.status = 'approved'
-        archive.reviewed_by = user
-        archive.reviewed_at = timezone.now()
-        archive.review_comment = comment
-        archive.save()
 
-        new_data = self.get_old_data(archive)
-        create_archive_log(request, archive, 'update', old_data=old_data, new_data=new_data)
-        ArchiveVersion.create_snapshot(archive, user, f'审核通过：{comment}' if comment else '审核通过')
+        archive.transition_status(
+            'approve',
+            reviewed_by=user,
+            reviewed_at=timezone.now(),
+            review_comment=comment
+        )
 
+        change_reason = f'审核通过：{comment}' if comment else '审核通过'
+        self.create_snapshot_and_log(request, archive, 'update', change_reason, old_data=old_data)
         create_notification_for_creator(archive, 'approved', comment)
 
         return Response(ArchiveSerializer(archive).data)
@@ -469,68 +334,45 @@ class ArchiveViewSet(viewsets.ModelViewSet):
         archive = self.get_object()
         user = request.user
 
-        if not is_archive_review_user(user) and not user.is_staff:
-            return Response(
-                {'detail': '您没有审核权限'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if archive.status != 'pending':
-            return Response(
-                {'detail': '只有待审核状态的案卷才能驳回'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        self.check_archive_permission(archive, user, 'review')
+        self.check_archive_status(archive, ['pending'], '只有待审核状态的案卷才能驳回')
 
         serializer = ArchiveRejectSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         comment = serializer.validated_data['comment']
-
         old_data = self.get_old_data(archive)
-        archive.status = 'rejected'
-        archive.reviewed_by = user
-        archive.reviewed_at = timezone.now()
-        archive.review_comment = comment
-        archive.save()
 
-        new_data = self.get_old_data(archive)
-        create_archive_log(request, archive, 'update', old_data=old_data, new_data=new_data)
-        ArchiveVersion.create_snapshot(archive, user, f'审核驳回：{comment}')
+        archive.transition_status(
+            'reject',
+            reviewed_by=user,
+            reviewed_at=timezone.now(),
+            review_comment=comment
+        )
 
-        RejectRecord.create_reject_record(archive, user, comment, old_data, new_data)
-
+        self.create_snapshot_and_log(request, archive, 'update', f'审核驳回：{comment}', old_data=old_data)
+        self.handle_reject_record(archive, user, comment, old_data, self.get_old_data(archive))
         create_notification_for_creator(archive, 'rejected', comment)
 
         return Response(ArchiveSerializer(archive).data)
 
+    def _check_version_permission(self, request, archive):
+        user = request.user
+        if not user.is_staff and not is_archive_review_user(user):
+            if is_archive_entry_user(user) and archive.created_by != user:
+                raise PermissionDenied('您没有权限查看该案卷的版本记录')
+
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def versions(self, request, pk=None):
         archive = self.get_object()
-        user = request.user
-
-        if not user.is_staff and not is_archive_review_user(user):
-            if is_archive_entry_user(user) and archive.created_by != user:
-                return Response(
-                    {'detail': '您没有权限查看该案卷的版本记录'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-        versions = archive.versions.all()
-        serializer = ArchiveVersionSerializer(versions, many=True)
-        return Response(serializer.data)
+        self._check_version_permission(request, archive)
+        return Response(ArchiveVersionSerializer(archive.versions.all(), many=True).data)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='versions/(?P<version_id>[^/.]+)')
     def version_detail(self, request, pk=None, version_id=None):
         archive = self.get_object()
-        user = request.user
-
-        if not user.is_staff and not is_archive_review_user(user):
-            if is_archive_entry_user(user) and archive.created_by != user:
-                return Response(
-                    {'detail': '您没有权限查看该案卷的版本记录'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+        self._check_version_permission(request, archive)
 
         try:
             version = ArchiveVersion.objects.get(archive=archive, id=version_id)
@@ -540,28 +382,21 @@ class ArchiveViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = ArchiveVersionSerializer(version)
-        return Response(serializer.data)
+        return Response(ArchiveVersionSerializer(version).data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def rollback(self, request, pk=None):
         archive = self.get_object()
         user = request.user
 
-        if not user.is_staff and not is_archive_review_user(user):
-            return Response(
-                {'detail': '您没有权限回滚案卷版本'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        self.check_archive_permission(archive, user, 'rollback')
 
         serializer = ArchiveRollbackSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        version_id = serializer.validated_data['version_id']
-
         try:
-            version = ArchiveVersion.objects.get(archive=archive, id=version_id)
+            version = ArchiveVersion.objects.get(archive=archive, id=serializer.validated_data['version_id'])
         except ArchiveVersion.DoesNotExist:
             return Response(
                 {'detail': '版本不存在'},
@@ -576,18 +411,8 @@ class ArchiveViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def reject_records(self, request, pk=None):
         archive = self.get_object()
-        user = request.user
-
-        if not user.is_staff and not is_archive_review_user(user):
-            if is_archive_entry_user(user) and archive.created_by != user:
-                return Response(
-                    {'detail': '您没有权限查看该案卷的驳回记录'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-        records = archive.reject_records.all()
-        serializer = RejectRecordSerializer(records, many=True)
-        return Response(serializer.data)
+        self._check_version_permission(request, archive)
+        return Response(RejectRecordSerializer(archive.reject_records.all(), many=True).data)
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def export(self, request):
@@ -620,8 +445,7 @@ class ArchiveViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            response = export_archives(archives, export_format)
-            return response
+            return export_archives(archives, export_format)
         except ValueError as e:
             return Response(
                 {'detail': str(e)},

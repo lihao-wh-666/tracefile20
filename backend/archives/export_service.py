@@ -16,6 +16,7 @@ from docx import Document
 from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+
 ARCHIVE_EXPORT_FIELDS = [
     ('id', 'ID'),
     ('archive_number', '案卷编号'),
@@ -50,23 +51,36 @@ def get_archive_field_value(archive, field_name):
     return str(value)
 
 
+def get_special_field_value(archive, field_key):
+    special_handlers = {
+        'category_name': lambda a: a.category.name if a.category else '',
+        'status_display': lambda a: a.get_status_display(),
+        'created_by_username': lambda a: a.created_by.username if a.created_by else '',
+        'reviewed_by_username': lambda a: a.reviewed_by.username if a.reviewed_by else '',
+    }
+    handler = special_handlers.get(field_key)
+    return handler(archive) if handler else get_archive_field_value(archive, field_key)
+
+
 def get_archive_export_data(archives):
     data = []
     for archive in archives:
         row = {}
-        for field_key, field_label in ARCHIVE_EXPORT_FIELDS:
-            if field_key == 'category_name':
-                row[field_key] = archive.category.name if archive.category else ''
-            elif field_key == 'status_display':
-                row[field_key] = archive.get_status_display()
-            elif field_key == 'created_by_username':
-                row[field_key] = archive.created_by.username if archive.created_by else ''
-            elif field_key == 'reviewed_by_username':
-                row[field_key] = archive.reviewed_by.username if archive.reviewed_by else ''
-            else:
-                row[field_key] = get_archive_field_value(archive, field_key)
+        for field_key, _ in ARCHIVE_EXPORT_FIELDS:
+            row[field_key] = get_special_field_value(archive, field_key)
         data.append(row)
     return data
+
+
+def generate_export_filename(extension):
+    return f'archives_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.{extension}'
+
+
+def create_export_response(buffer, content_type, filename):
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type=content_type)
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 def export_csv(archives):
@@ -77,11 +91,12 @@ def export_csv(archives):
     data = get_archive_export_data(archives)
     for row in data:
         writer.writerow([row[key] for key, _ in ARCHIVE_EXPORT_FIELDS])
-    buffer.seek(0)
-    response = HttpResponse(buffer.getvalue().encode('utf-8-sig'), content_type='text/csv; charset=utf-8')
-    filename = f'archives_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+
+    return create_export_response(
+        buffer,
+        'text/csv; charset=utf-8',
+        generate_export_filename('csv')
+    )
 
 
 def export_excel(archives):
@@ -123,15 +138,12 @@ def export_excel(archives):
 
     buffer = io.BytesIO()
     wb.save(buffer)
-    buffer.seek(0)
 
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    return create_export_response(
+        buffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        generate_export_filename('xlsx')
     )
-    filename = f'archives_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
 
 
 def export_word(archives):
@@ -166,15 +178,12 @@ def export_word(archives):
 
     buffer = io.BytesIO()
     doc.save(buffer)
-    buffer.seek(0)
 
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return create_export_response(
+        buffer,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        generate_export_filename('docx')
     )
-    filename = f'archives_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.docx'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
 
 
 def export_pdf(archives):
@@ -264,12 +273,12 @@ def export_pdf(archives):
     story.append(table)
 
     doc.build(story)
-    buffer.seek(0)
 
-    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-    filename = f'archives_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    return create_export_response(
+        buffer,
+        'application/pdf',
+        generate_export_filename('pdf')
+    )
 
 
 EXPORT_FORMATS = {

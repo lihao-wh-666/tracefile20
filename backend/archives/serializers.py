@@ -2,6 +2,22 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Category, Archive, Todo, UserProfile, UserPreference, ArchiveLog, ArchiveVersion, RejectRecord
 from django.contrib.auth.password_validation import validate_password
+from .permissions import ARCHIVE_ENTRY_GROUP_NAME, ARCHIVE_REVIEW_GROUP_NAME
+
+
+class UsernameSerializerMixin:
+    def get_username(self, obj, user_field):
+        user = getattr(obj, user_field, None)
+        return user.username if user else None
+
+    def get_created_by_username(self, obj):
+        return self.get_username(obj, 'created_by')
+
+    def get_reviewed_by_username(self, obj):
+        return self.get_username(obj, 'reviewed_by')
+
+    def get_rejected_by_username(self, obj):
+        return self.get_username(obj, 'rejected_by')
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -50,10 +66,10 @@ class UserInfoSerializer(serializers.ModelSerializer):
         return list(obj.groups.values_list('name', flat=True))
 
     def get_is_archive_entry(self, obj):
-        return obj.groups.filter(name='案卷管理录入组').exists()
+        return obj.groups.filter(name=ARCHIVE_ENTRY_GROUP_NAME).exists()
 
     def get_is_archive_review(self, obj):
-        return obj.groups.filter(name='案卷管理审核组').exists()
+        return obj.groups.filter(name=ARCHIVE_REVIEW_GROUP_NAME).exists()
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -148,7 +164,7 @@ class CategorySimpleSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
-class ArchiveSerializer(serializers.ModelSerializer):
+class ArchiveSerializer(serializers.ModelSerializer, UsernameSerializerMixin):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     created_by_username = serializers.SerializerMethodField()
@@ -164,12 +180,6 @@ class ArchiveSerializer(serializers.ModelSerializer):
             'submitted_at'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'reviewed_by', 'reviewed_at', 'submitted_at']
-
-    def get_created_by_username(self, obj):
-        return obj.created_by.username if obj.created_by else None
-
-    def get_reviewed_by_username(self, obj):
-        return obj.reviewed_by.username if obj.reviewed_by else None
 
 
 class ArchiveLogSerializer(serializers.ModelSerializer):
@@ -189,7 +199,7 @@ class ArchiveLogSerializer(serializers.ModelSerializer):
         ]
 
 
-class ArchiveVersionSerializer(serializers.ModelSerializer):
+class ArchiveVersionSerializer(serializers.ModelSerializer, UsernameSerializerMixin):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     created_by_username = serializers.SerializerMethodField()
 
@@ -208,11 +218,8 @@ class ArchiveVersionSerializer(serializers.ModelSerializer):
             'created_by', 'created_by_username', 'change_reason', 'created_at'
         ]
 
-    def get_created_by_username(self, obj):
-        return obj.created_by.username if obj.created_by else None
 
-
-class RejectRecordSerializer(serializers.ModelSerializer):
+class RejectRecordSerializer(serializers.ModelSerializer, UsernameSerializerMixin):
     rejected_by_username = serializers.SerializerMethodField()
     version_number = serializers.IntegerField(source='reject_version.version_number', read_only=True)
 
@@ -230,9 +237,6 @@ class RejectRecordSerializer(serializers.ModelSerializer):
             'rejected_at', 'data_before', 'data_after', 'field_changes',
             'is_resubmitted', 'resubmitted_at'
         ]
-
-    def get_rejected_by_username(self, obj):
-        return obj.rejected_by.username if obj.rejected_by else None
 
 
 class ArchiveRejectSerializer(serializers.Serializer):

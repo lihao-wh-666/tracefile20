@@ -1,9 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .mixins import TimestampMixin, ArchiveDataMixin
 
 
-class UserProfile(models.Model):
+class UserProfile(TimestampMixin):
     GENDER_CHOICES = [
         ('male', '男'),
         ('female', '女'),
@@ -17,8 +18,6 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, verbose_name='个人简介')
     department = models.CharField(max_length=100, blank=True, verbose_name='部门')
     position = models.CharField(max_length=100, blank=True, verbose_name='职位')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         verbose_name = '用户资料'
@@ -28,7 +27,7 @@ class UserProfile(models.Model):
         return self.user.username
 
 
-class UserPreference(models.Model):
+class UserPreference(TimestampMixin):
     THEME_CHOICES = [
         ('light', '浅色主题'),
         ('dark', '深色主题'),
@@ -49,8 +48,6 @@ class UserPreference(models.Model):
     auto_save = models.BooleanField(default=True, verbose_name='自动保存')
     page_size = models.IntegerField(default=10, verbose_name='每页条数')
     sidebar_collapsed = models.BooleanField(default=False, verbose_name='侧边栏收起')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         verbose_name = '用户偏好'
@@ -107,7 +104,7 @@ class LoginAttempt(models.Model):
             pass
 
 
-class Todo(models.Model):
+class Todo(TimestampMixin):
     PRIORITY_CHOICES = [
         ('low', '低'),
         ('medium', '中'),
@@ -134,8 +131,6 @@ class Todo(models.Model):
     is_read = models.BooleanField(default=False, verbose_name='是否已读')
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='todos', verbose_name='所属用户')
     archive = models.ForeignKey('Archive', on_delete=models.CASCADE, null=True, blank=True, related_name='todos', verbose_name='关联案卷')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         verbose_name = '待办事项'
@@ -145,13 +140,16 @@ class Todo(models.Model):
     def __str__(self):
         return self.title
 
+    def toggle_status(self):
+        self.status = 'completed' if self.status == 'pending' else 'pending'
+        self.save()
+        return self
 
-class Category(models.Model):
+
+class Category(TimestampMixin):
     name = models.CharField(max_length=100, verbose_name='分类名称')
     description = models.TextField(blank=True, verbose_name='分类描述')
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='父分类')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         verbose_name = '分类'
@@ -161,8 +159,12 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    def get_children_tree(self):
+        from .serializers import CategorySerializer
+        return CategorySerializer(self.children.all(), many=True).data if self.children.exists() else []
 
-class Archive(models.Model):
+
+class Archive(TimestampMixin, ArchiveDataMixin):
     STATUS_CHOICES = [
         ('draft', '草稿'),
         ('pending', '待审核'),
@@ -170,13 +172,17 @@ class Archive(models.Model):
         ('rejected', '已驳回'),
     ]
 
+    STATUS_TRANSITIONS = {
+        'submit': {'from': ['draft', 'rejected'], 'to': 'pending'},
+        'approve': {'from': ['pending'], 'to': 'approved'},
+        'reject': {'from': ['pending'], 'to': 'rejected'},
+    }
+
     title = models.CharField(max_length=200, verbose_name='案卷标题')
     description = models.TextField(verbose_name='案卷描述')
     archive_number = models.CharField(max_length=100, unique=True, verbose_name='案卷编号')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='archives', verbose_name='所属分类')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='状态')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_archives', verbose_name='创建人')
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_archives', verbose_name='审核人')
     reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name='审核时间')
@@ -191,8 +197,26 @@ class Archive(models.Model):
     def __str__(self):
         return f"{self.archive_number} - {self.title}"
 
+    def can_transition(self, action):
+        transition = self.STATUS_TRANSITIONS.get(action)
+        return transition and self.status in transition['from']
 
-class ArchiveLog(models.Model):
+    def transition_status(self, action, **kwargs):
+        if not self.can_transition(action):
+            raise ValueError(f"无法从状态 {self.status} 执行操作 {action}")
+
+        transition = self.STATUS_TRANSITIONS[action]
+        old_status = self.status
+        self.status = transition['to']
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+        self.save()
+        return old_status, self.status
+
+
+class ArchiveLog(TimestampMixin):
     ACTION_CHOICES = [
         ('create', '创建'),
         ('update', '更新'),
@@ -214,7 +238,6 @@ class ArchiveLog(models.Model):
     operator = models.CharField(max_length=100, verbose_name='操作人')
     ip_address = models.GenericIPAddressField(verbose_name='IP地址')
     change_content = models.JSONField(null=True, blank=True, verbose_name='变更内容')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='操作时间')
 
     class Meta:
         verbose_name = '案卷操作日志'
@@ -224,8 +247,30 @@ class ArchiveLog(models.Model):
     def __str__(self):
         return f"{self.get_action_type_display()} - {self.archive_number} - {self.operator}"
 
+    @classmethod
+    def create_log(cls, archive, action_type, operator, ip_address, old_data=None, new_data=None):
+        change_content = None
+        if old_data is not None or new_data is not None:
+            change_content = {'old': old_data, 'new': new_data}
 
-class ArchiveVersion(models.Model):
+        return cls.objects.create(
+            archive=archive,
+            archive_number=archive.archive_number if archive else '',
+            archive_title=archive.title if archive else '',
+            action_type=action_type,
+            operator=operator,
+            ip_address=ip_address,
+            change_content=change_content
+        )
+
+
+class ArchiveVersion(TimestampMixin):
+    SNAPSHOT_FIELDS = [
+        'title', 'description', 'archive_number', 'category_id',
+        'category_name', 'status', 'created_by_id', 'reviewed_by_id',
+        'reviewed_at', 'review_comment', 'submitted_at'
+    ]
+
     archive = models.ForeignKey(
         Archive,
         on_delete=models.CASCADE,
@@ -249,7 +294,6 @@ class ArchiveVersion(models.Model):
         verbose_name='创建人'
     )
     change_reason = models.TextField(blank=True, verbose_name='修改原因')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     class Meta:
         verbose_name = '案卷版本快照'
@@ -261,27 +305,29 @@ class ArchiveVersion(models.Model):
         return f"{self.archive_number} - 版本{self.version_number}"
 
     @classmethod
-    def create_snapshot(cls, archive, created_by, change_reason=''):
+    def _get_next_version(cls, archive):
         last_version = cls.objects.filter(archive=archive).order_by('-version_number').first()
-        version_number = last_version.version_number + 1 if last_version else 1
+        return last_version.version_number + 1 if last_version else 1
 
-        snapshot_data = {
-            'title': archive.title,
-            'description': archive.description,
-            'archive_number': archive.archive_number,
-            'category_id': archive.category_id,
-            'category_name': archive.category.name if archive.category else '',
-            'status': archive.status,
-            'created_by_id': archive.created_by_id,
-            'reviewed_by_id': archive.reviewed_by_id,
-            'reviewed_at': archive.reviewed_at.isoformat() if archive.reviewed_at else None,
-            'review_comment': archive.review_comment,
-            'submitted_at': archive.submitted_at.isoformat() if archive.submitted_at else None,
-        }
+    @classmethod
+    def _build_snapshot_data(cls, archive):
+        data = {}
+        for field in cls.SNAPSHOT_FIELDS:
+            value = getattr(archive, field, None)
+            if field == 'category_name':
+                value = archive.category.name if archive.category else ''
+            elif hasattr(value, 'isoformat'):
+                value = value.isoformat() if value else None
+            data[field] = value
+        return data
+
+    @classmethod
+    def create_snapshot(cls, archive, created_by, change_reason=''):
+        snapshot_data = cls._build_snapshot_data(archive)
 
         return cls.objects.create(
             archive=archive,
-            version_number=version_number,
+            version_number=cls._get_next_version(archive),
             title=archive.title,
             description=archive.description,
             archive_number=archive.archive_number,
@@ -294,16 +340,8 @@ class ArchiveVersion(models.Model):
         )
 
     def restore(self, restored_by):
-        from .models import Archive
         archive = self.archive
-
-        old_data = {
-            'title': archive.title,
-            'description': archive.description,
-            'archive_number': archive.archive_number,
-            'category_id': archive.category_id,
-            'status': archive.status
-        }
+        old_data = archive.to_dict()
 
         archive.title = self.title
         archive.description = self.description
@@ -315,20 +353,13 @@ class ArchiveVersion(models.Model):
         archive.submitted_at = None
         archive.save()
 
-        new_data = {
-            'title': archive.title,
-            'description': archive.description,
-            'archive_number': archive.archive_number,
-            'category_id': archive.category_id,
-            'status': archive.status
-        }
-
+        new_data = archive.to_dict()
         self.create_snapshot(archive, restored_by, f'回滚到版本{self.version_number}')
 
         return archive, old_data, new_data
 
 
-class RejectRecord(models.Model):
+class RejectRecord(TimestampMixin):
     archive = models.ForeignKey(
         Archive,
         on_delete=models.CASCADE,
@@ -369,16 +400,7 @@ class RejectRecord(models.Model):
 
     @classmethod
     def create_reject_record(cls, archive, rejected_by, reject_comment, old_data, new_data):
-        field_changes = {}
-        for key in set(old_data.keys()) | set(new_data.keys()):
-            old_val = old_data.get(key)
-            new_val = new_data.get(key)
-            if old_val != new_val:
-                field_changes[key] = {
-                    'old': old_val,
-                    'new': new_val
-                }
-
+        field_changes = ArchiveDataMixin.get_field_changes(old_data, new_data)
         current_version = ArchiveVersion.objects.filter(archive=archive).order_by('-version_number').first()
 
         return cls.objects.create(
@@ -392,7 +414,6 @@ class RejectRecord(models.Model):
         )
 
     def mark_resubmitted(self):
-        from django.utils import timezone
         self.is_resubmitted = True
         self.resubmitted_at = timezone.now()
         self.save()
